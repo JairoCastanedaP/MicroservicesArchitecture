@@ -1,0 +1,22 @@
+spring:
+  application:
+    name:
+      event-service
+  web:
+    error:
+    # Muestra el mensaje de ResponseStatusException pero nunca el stacktrace
+    # (DevTools lo activa por defecto en desarrollo).
+    # Nota Boot 4: antes era server.error.include-*; ahora es spring.web.error.include-*
+      include-message:  always
+      include-stacktrace:  never
+
+server:
+# Cada microservicio tiene un puerto fijo (event-service = 8081, booking-service = 8082...).
+# Se puede sobrescribir con la variable de entorno SERVER_PORT.
+  port:
+    ${SERVER_PORT:8081}
+
+# Propiedades propias del servicio
+ticketing:
+  seed-data:
+    enabled: true
