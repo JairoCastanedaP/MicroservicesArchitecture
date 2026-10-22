@@ -1,9 +1,11 @@
 package pe.zuncode.ticketing.event.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import pe.zuncode.ticketing.event.model.Venue;
+import pe.zuncode.ticketing.event.dto.VenueRequest;
+import pe.zuncode.ticketing.event.dto.VenueResponse;
 import pe.zuncode.ticketing.event.service.VenueService;
 
 import java.net.URI;
@@ -20,21 +22,22 @@ public class VenueController {
     }
 
     @GetMapping
-    public List<Venue> findAll() {
+    public List<VenueResponse> findAll() {
         return venueService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Venue findById(@PathVariable Long id) {
+    public VenueResponse findById(@PathVariable Long id) {
         return venueService.findById(id);
     }
 
+    // @Valid dispara Bean Validation; si falla, Spring lanza MethodArgumentNotValidException (400)
     @PostMapping
-    public ResponseEntity<Venue> create(@RequestBody Venue venue) {
-        Venue created = venueService.create(venue);
+    public ResponseEntity<VenueResponse> create(@Valid @RequestBody VenueRequest request) {
+        VenueResponse created = venueService.create(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(created.getId())
+                .buildAndExpand(created.id())
                 .toUri();
         return ResponseEntity.created(location).body(created);
     }

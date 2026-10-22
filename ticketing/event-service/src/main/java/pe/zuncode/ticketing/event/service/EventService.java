@@ -2,9 +2,17 @@ package pe.zuncode.ticketing.event.service;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import pe.zuncode.ticketing.event.dto.EventRequest;
+import pe.zuncode.ticketing.event.dto.EventResponse;
+import pe.zuncode.ticketing.event.dto.TicketCategoryResponse;
+import pe.zuncode.ticketing.event.exception.BusinessRuleException;
+import pe.zuncode.ticketing.event.exception.InvalidRequestException;
+import pe.zuncode.ticketing.event.exception.ResourceNotFoundException;
 import pe.zuncode.ticketing.event.model.*;
 import pe.zuncode.ticketing.event.repository.EventRepository;
+import pe.zuncode.ticketing.event.repository.VenueRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,117 +20,115 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 public class EventService {
 
     private final EventRepository eventRepository;
-    private final VenueService venueService;
+    private final VenueRepository venueRepository;
 
-    public EventService(EventRepository eventRepository, VenueService venueService) {
+    public EventService(EventRepository eventRepository, VenueRepository venueRepository) {
         this.eventRepository = eventRepository;
-        this.venueService = venueService;
+        this.venueRepository = venueRepository;
     }
 
-    public List<Event> findAll(String city, EventCategory category, EventStatus status) {
-        return eventRepository.findAll().stream()
-                .filter(event -> category == null || event.getCategory() == category)
-                .filter(event -> status == null || event.getStatus() == status)
-                .filter(event -> city == null
-                        || venueService.findById(event.getVenueId()).getCity().equalsIgnoreCase(city))
-                .sorted(Comparator.comparing(Event::getDateTime))
+    public List<EventResponse> findAll(String city, EventCategory category, EventStatus status) {
+        // El filtrado ahora lo hace la base de datos (WHERE), no Java
+        return eventRepository.search(city, category, status).stream()
+                .map(EventResponse::from)
                 .toList();
     }
 
-    public Event findById(Long id) {
-        return eventRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Evento no encontrado: " + id));
+    public EventResponse findById(Long id) {
+        return EventResponse.from(getEventWithDetails(id));
     }
 
-    public List<TicketCategory> findTicketCategories(Long eventId) {
-        return findById(eventId).getTicketCategories();
+    public List<TicketCategoryResponse> findTicketCategories(Long eventId) {
+        return getEventWithDetails(eventId).getTicketCategories().stream()
+                .map(TicketCategoryResponse::from)
+                .toList();
     }
 
-    public Event create(Event event) {
-        validate(event);
-        event.setId(null);
-        event.setStatus(EventStatus.DRAFT); // todo evento nace como borrador
-        event.getTicketCategories().forEach(category -> category.setId(null));
-        return eventRepository.save(event);
+    @Transactional
+    public EventResponse create(EventRequest request) {
+        Venue venue = findVenueForEvent(request.venueId());
+        validateCapacity(request, venue);
+
+        Event event = new Event(request.name(), request.description(), request.category(),
+                venue, request.dateTime());
+        toTicketCategories(request).forEach(event::addTicketCategory);
+
+        // cascade = ALL: al guardar el evento también se insertan sus zonas
+        return EventResponse.from(eventRepository.save(event));
     }
 
-    public Event update(Long id, Event changes) {
-        Event current = findById(id);
-        if (current.getStatus() == EventStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede modificar un evento cancelado");
-        }
-        validate(changes);
-        current.setName(changes.getName());
-        current.setDescription(changes.getDescription());
-        current.setCategory(changes.getCategory());
-        current.setVenueId(changes.getVenueId());
-        current.setDateTime(changes.getDateTime());
-        current.setTicketCategories(changes.getTicketCategories());
-        return eventRepository.save(current);
-    }
-
-    public Event publish(Long id) {
-        Event event = findById(id);
+    @Transactional
+    public EventResponse update(Long id, EventRequest request) {
+        Event event = getEventWithDetails(id);
         if (event.getStatus() == EventStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede publicar un evento cancelado");
+            throw new BusinessRuleException("No se puede modificar un evento cancelado");
+        }
+        Venue venue = findVenueForEvent(request.venueId());
+        validateCapacity(request, venue);
+
+        event.setName(request.name());
+        event.setDescription(request.description());
+        event.setCategory(request.category());
+        event.setVenue(venue);
+        event.setDateTime(request.dateTime());
+        event.replaceTicketCategories(toTicketCategories(request));
+
+        // No hace falta llamar a save(): la entidad está "managed" y Hibernate detecta los
+        // cambios al terminar la transacción (dirty checking). Forzamos el flush para que
+        // la base de datos asigne los ids de las zonas nuevas antes de armar la respuesta.
+        eventRepository.flush();
+        return EventResponse.from(event);
+    }
+
+    @Transactional
+    public EventResponse publish(Long id) {
+        Event event = getEventWithDetails(id);
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new BusinessRuleException("No se puede publicar un evento cancelado");
         }
         if (event.getTicketCategories().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new BusinessRuleException(
                     "El evento debe tener al menos una zona (ticketCategory) para publicarse");
         }
         event.setStatus(EventStatus.PUBLISHED);
-        return eventRepository.save(event);
+        // dirty checking: UPDATE automático al hacer commit
+        return EventResponse.from(event);
     }
 
+    @Transactional
     public void delete(Long id) {
         if (!eventRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado: " + id);
+            throw new ResourceNotFoundException("Evento", id);
         }
         eventRepository.deleteById(id);
     }
 
-    private void validate(Event event) {
-        if (event.getName() == null || event.getName().isBlank()) {
-            throw badRequest("name es obligatorio");
-        }
-        if (event.getCategory() == null) {
-            throw badRequest("category es obligatorio");
-        }
-        if (event.getVenueId() == null) {
-            throw badRequest("venueId es obligatorio");
-        }
-        if (event.getDateTime() == null || !event.getDateTime().isAfter(LocalDateTime.now())) {
-            throw badRequest("dateTime debe ser una fecha futura");
-        }
-        for (TicketCategory category : event.getTicketCategories()) {
-            if (category.getName() == null || category.getName().isBlank()) {
-                throw badRequest("Cada zona debe tener name");
-            }
-            if (category.getPrice() == null || category.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-                throw badRequest("El precio de la zona " + category.getName() + " debe ser mayor a 0");
-            }
-            if (category.getCapacity() <= 0) {
-                throw badRequest("La capacidad de la zona " + category.getName() + " debe ser mayor a 0");
-            }
-        }
+    private Event getEventWithDetails(Long id) {
+        return eventRepository.findWithDetailsById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Evento", id));
+    }
 
-        Venue venue;
-        try {
-            venue = venueService.findById(event.getVenueId());
-        } catch (ResponseStatusException ex) {
-            throw badRequest("El recinto " + event.getVenueId() + " no existe");
-        }
-        if (event.totalCapacity() > venue.getCapacity()) {
-            throw badRequest("Las zonas suman " + event.totalCapacity()
+    // Un venueId inexistente en el cuerpo es un error del cliente (400), no un 404 del recurso pedido
+    private Venue findVenueForEvent(Long venueId) {
+        return venueRepository.findById(venueId)
+                .orElseThrow(() -> new InvalidRequestException("El recinto " + venueId + " no existe"));
+    }
+
+    private static void validateCapacity(EventRequest request, Venue venue) {
+        if (request.totalCapacity() > venue.getCapacity()) {
+            throw new InvalidRequestException("Las zonas suman " + request.totalCapacity()
                     + " entradas y el aforo del recinto es " + venue.getCapacity());
         }
     }
 
-    private static ResponseStatusException badRequest(String message) {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    private static List<TicketCategory> toTicketCategories(EventRequest request) {
+        return request.ticketCategories().stream()
+                .map(category -> new TicketCategory(category.name(), category.price(), category.capacity()))
+                .toList();
     }
+
 }

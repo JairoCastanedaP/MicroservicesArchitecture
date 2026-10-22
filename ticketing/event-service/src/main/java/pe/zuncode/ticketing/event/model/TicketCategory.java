@@ -1,22 +1,34 @@
 package pe.zuncode.ticketing.event.model;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 
-@JsonPropertyOrder({"id", "name", "price", "capacity"})
+@Entity
+@Table(name = "ticket_categories")
 public class TicketCategory {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 80)
     private String name;
+
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
+
+    @Column(nullable = false)
     private int capacity;
 
-    public TicketCategory () {
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
 
+    protected TicketCategory() {
     }
 
-    public TicketCategory(Long id, String name, BigDecimal price, int capacity) {
-        this.id = id;
+    public TicketCategory(String name, BigDecimal price, int capacity) {
         this.name = name;
         this.price = price;
         this.capacity = capacity;
@@ -26,31 +38,25 @@ public class TicketCategory {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
     public int getCapacity() {
         return capacity;
     }
 
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
+    public Event getEvent() {
+        return event;
     }
+
+    // Solo lo usa Event.addTicketCategory para mantener la relación sincronizada
+    void setEvent(Event event) {
+        this.event = event;
+    }
+
 }

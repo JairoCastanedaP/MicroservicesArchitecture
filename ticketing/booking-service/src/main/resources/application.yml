@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: booking-service
+
+  # Database per Service: booking-service tiene SU propia base de datos H2
+  # (archivo ./data/booking_db.mv.db). Nunca se conecta a event_db.
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/booking_db;AUTO_SERVER=TRUE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+
+  # Consola web de H2 en http://localhost:8082/h2-console (solo para desarrollo)
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  web:
+    error:
+      include-message: always
+      include-stacktrace: never
+
+server:
+  port: ${SERVER_PORT:8082}
+
+logging:
+  level:
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:debug}
+
+# Propiedades propias del servicio (se leen con BookingProperties)
+ticketing:
+  booking:
+    # Tiempo que una reserva PENDING retiene las entradas antes de expirar (10m, 30s, 1h...)
+    hold-time: ${BOOKING_HOLD_TIME:10m}

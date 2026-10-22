@@ -1,26 +1,37 @@
 package pe.zuncode.ticketing.event.model;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.persistence.*;
 
-@JsonPropertyOrder({"id", "name", "city", "address", "capacity"})
+@Entity
+@Table(name = "venues")
 public class Venue {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 120)
     private String name;
+
+    @Column(nullable = false, length = 80)
     private String city;
+
+    @Column(length = 200)
     private String address;
+
+    @Column(nullable = false)
     private int capacity;
 
-    public Venue() {
+    protected Venue() {
     }
 
-    public Venue(Long id, String name, String city, String address, int capacity) {
-        this.id = id;
+    public Venue(String name, String city, String address, int capacity) {
         this.name = name;
         this.city = city;
         this.address = address;
         this.capacity = capacity;
     }
+
 
     public Long getId() {
         return id;

@@ -10,11 +10,34 @@ spring:
       include-message:  always
       include-stacktrace:  never
 
+  datasource:
+    # Base H2 en archivo: los datos persisten entre reinicios en ./data/eventdb.mv.db
+    # (relativo al directorio de trabajo). AUTO_SERVER permite abrirla desde otro proceso,
+    # por ejemplo la pestaña Database de IntelliJ, mientras la app está corriendo.
+    url: jdbc:h2:file:./data/eventdb;AUTO_SERVER=TRUE
+    username: sa
+    password:
+  # Habilita la consola web de H2 en /h2-console
+  # (requiere la dependencia spring-boot-h2console en Boot 4).
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    open-in-view: false
+
 server:
 # Cada microservicio tiene un puerto fijo (event-service = 8081, booking-service = 8082...).
 # Se puede sobrescribir con la variable de entorno SERVER_PORT.
   port:
     ${SERVER_PORT:8081}
+
+logging:
+  level:
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:debug}
 
 # Propiedades propias del servicio
 ticketing:

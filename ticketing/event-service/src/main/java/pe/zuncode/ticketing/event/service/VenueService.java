@@ -1,14 +1,18 @@
 package pe.zuncode.ticketing.event.service;
 
-import org.springframework.http.HttpStatus;
+
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
+import pe.zuncode.ticketing.event.dto.VenueRequest;
+import pe.zuncode.ticketing.event.dto.VenueResponse;
+import pe.zuncode.ticketing.event.exception.ResourceNotFoundException;
 import pe.zuncode.ticketing.event.model.Venue;
 import pe.zuncode.ticketing.event.repository.VenueRepository;
 
 import java.util.List;
 
 @Service
+@Transactional(readOnly = true) // por defecto todas las operaciones son de solo lectura
 public class VenueService {
 
     private final VenueRepository venueRepository;
@@ -17,31 +21,23 @@ public class VenueService {
         this.venueRepository = venueRepository;
     }
 
-    public List<Venue> findAll () {
-        return venueRepository.findAll();
+    public List<VenueResponse> findAll() {
+        return venueRepository.findAll().stream().map(VenueResponse::from).toList();
     }
 
-    public Venue findById (Long id) {
-        return  venueRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResponseStatusException( HttpStatus.NOT_FOUND,
-                                        "Recinto no encontrado: " + id)); }
-
-    public Venue create (Venue venue) {
-        if (isBlank(venue.getName()) || isBlank(venue.getCity())) {
-            throw new ResponseStatusException (HttpStatus.BAD_REQUEST, "name y city son obligatorios"
-                            ); }
-        if (venue.getCapacity() <= 0) {
-            throw new ResponseStatusException (HttpStatus.BAD_REQUEST,
-                                    "capacity debe ser mayor a 0"
-                            );
-        }
-        venue.setId(null);
-        // el id lo asigna el repositorio
-        return venueRepository.save(venue);
+    public VenueResponse findById(Long id) {
+        return VenueResponse.from(getVenue(id));
     }
 
-    private boolean isBlank(String str) {
-        return str == null || str.trim().isEmpty();
+    @Transactional // este sí escribe: abre una transacción de lectura/escritura
+    public VenueResponse create(VenueRequest request) {
+        Venue venue = new Venue(request.name(), request.city(), request.address(), request.capacity());
+        return VenueResponse.from(venueRepository.save(venue));
     }
+
+    private Venue getVenue(Long id) {
+        return venueRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Recinto", id));
+    }
+
 }
