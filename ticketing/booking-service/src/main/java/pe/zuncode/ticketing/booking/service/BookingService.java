@@ -1,5 +1,6 @@
 package pe.zuncode.ticketing.booking.service;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.zuncode.ticketing.booking.client.TicketAvailability;
@@ -24,6 +25,7 @@ import java.util.List;
  *   <li>Solo una reserva PENDING y no vencida se puede pagar; al confirmar se emite un ticket por entrada.</li>
  *   <li>Solo una reserva PENDING se puede cancelar.</li>
  *   <li>Si se intenta pagar una reserva vencida, queda EXPIRED.</li>
+ *   <li>Sesión 4: cada cliente solo ve y opera SUS reservas; un ADMIN ve todas ({@link Requester}).</li>
  * </ul>
  * Sesión 3: ya no hay {@code @Transactional} a nivel de clase. Cada método declara la suya,
  * porque {@link #create} NO debe tener una transacción abierta mientras llama a otro servicio.
@@ -43,21 +45,24 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public List<BookingResponse> findAll(String customerEmail, BookingStatus status) {
-        return bookingRepository.search(customerEmail, status).stream()
+    public List<BookingResponse> findAll(Requester requester, String customerEmail, BookingStatus status) {
+        // Un cliente solo puede listar sus reservas: se ignora el filtro que envíe
+        String email = requester.admin() ? customerEmail : requester.email();
+        return bookingRepository.search(email, status).stream()
                 .map(BookingResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public BookingResponse findById(Long id) {
-        return BookingResponse.from(getBooking(id));
+    public BookingResponse findById(Long id, Requester requester) {
+        return BookingResponse.from(getBooking(id, requester));
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> findTickets(Long id) {
+    public List<TicketResponse> findTickets(Long id, Requester requester) {
         Booking booking = bookingRepository.findWithTicketsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", id));
+        requireAccess(booking, requester);
         return booking.getTickets().stream().map(TicketResponse::from).toList();
     }
 
@@ -66,7 +71,7 @@ public class BookingService {
      * varios reintentos) y no queremos tener una conexión a la base de datos ocupada mientras
      * esperamos. {@code save()} abre su propia transacción, corta, al final.
      */
-    public BookingResponse create(BookingRequest request) {
+    public BookingResponse create(BookingRequest request, Requester requester) {
         TicketAvailability availability =
                 catalogService.getAvailability(request.eventId(), request.ticketCategoryId());
 
@@ -80,7 +85,7 @@ public class BookingService {
 
         LocalDateTime now = LocalDateTime.now();
         Booking booking = new Booking(request.eventId(), request.ticketCategoryId(),
-                request.customerEmail(), request.quantity(), availability.price(),
+                requester.email(), request.quantity(), availability.price(),
                 now, now.plus(properties.holdTime()));
         return BookingResponse.from(bookingRepository.save(booking));
     }
@@ -92,8 +97,8 @@ public class BookingService {
      * aquí queremos que ese cambio sí se guarde.
      */
     @Transactional(noRollbackFor = BusinessRuleException.class)
-    public BookingResponse getPayable(Long id) {
-        Booking booking = getBooking(id);
+    public BookingResponse getPayable(Long id, Requester requester) {
+        Booking booking = getBooking(id, requester);
         requirePending(booking, "pagar");
         if (booking.isExpired(LocalDateTime.now())) {
             booking.setStatus(BookingStatus.EXPIRED);
@@ -121,8 +126,8 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse cancel(Long id) {
-        Booking booking = getBooking(id);
+    public BookingResponse cancel(Long id, Requester requester) {
+        Booking booking = getBooking(id, requester);
         requirePending(booking, "cancelar");
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.flush();
@@ -132,6 +137,19 @@ public class BookingService {
     private Booking getBooking(Long id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", id));
+    }
+
+    private Booking getBooking(Long id, Requester requester) {
+        Booking booking = getBooking(id);
+        requireAccess(booking, requester);
+        return booking;
+    }
+
+    // Sesión 4: el rol CUSTOMER no basta, además hay que ser el DUEÑO de la reserva (→ 403)
+    private static void requireAccess(Booking booking, Requester requester) {
+        if (!requester.canAccess(booking.getCustomerEmail())) {
+            throw new AccessDeniedException("La reserva " + booking.getId() + " no pertenece a " + requester.email());
+        }
     }
 
     private static void requirePending(Booking booking, String action) {

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Ticketing - booking-service (Sesión 3)",
-    "description": "Peticiones de prueba para booking-service. Requiere event-service (8081) y payment-service (8083) en marcha. Ejecuta las peticiones en orden; Postman guarda automáticamente los ids de las reservas creadas. Cada petición incluye pruebas del código HTTP esperado (pestaña Scripts > Post-response).",
+    "name": "Ticketing - booking-service (Sesión 4)",
+    "description": "Peticiones de prueba para booking-service. Requiere user-service (8084), event-service (8081) y payment-service (8083) en marcha. Ejecuta primero los login; Postman guarda los tokens y los ids de las reservas creadas. Los login guardan cada token en una variable de la colección. Cada petición incluye pruebas del código HTTP esperado (pestaña Scripts > Post-response).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -11,8 +11,33 @@
       "type": "string"
     },
     {
+      "key": "auth",
+      "value": "http://localhost:8084/api/v1",
+      "type": "string"
+    },
+    {
       "key": "actuator",
       "value": "http://localhost:8082/actuator",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "anaToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "luisToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "organizerToken",
+      "value": "",
       "type": "string"
     },
     {
@@ -28,10 +53,163 @@
   ],
   "item": [
     {
+      "name": "Autenticación (ejecutar primero)",
+      "item": [
+        {
+          "name": "Login CUSTOMER Ana (ana@mail.com) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('anaToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@mail.com\",\n  \"password\": \"Customer123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login CUSTOMER Luis (luis@mail.com) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('luisToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"luis@mail.com\",\n  \"password\": \"Customer123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login ORGANIZER (organizer@ticketing.pe) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('organizerToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"organizer@ticketing.pe\",\n  \"password\": \"Organizer123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login ADMIN (admin@ticketing.pe) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@ticketing.pe\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Reservas",
       "item": [
         {
-          "name": "Crear reserva -> 201 (el precio lo da event-service)",
+          "name": "Crear reserva como Ana -> 201 (el cliente sale del token)",
           "event": [
             {
               "listen": "test",
@@ -40,7 +218,7 @@
                 "exec": [
                   "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
                   "pm.test('Validación 1', () => { pm.expect(pm.response.json().status).to.eql('PENDING'); });",
-                  "pm.test('Validación 2', () => { pm.expect(pm.response.json().unitPrice).to.eql(450); });",
+                  "pm.test('Validación 2', () => { pm.expect(pm.response.json().customerEmail).to.eql('ana@mail.com'); });",
                   "pm.test('Validación 3', () => { pm.expect(pm.response.json().totalAmount).to.eql(900); });",
                   "pm.collectionVariables.set('bookingId', pm.response.json().id);"
                 ]
@@ -50,6 +228,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/bookings",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -58,7 +246,88 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 1,\n  \"customerEmail\": \"ana@mail.com\",\n  \"quantity\": 2\n}",
+              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 1,\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "S4: Crear reserva sin token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/bookings",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 1,\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "S4: Crear reserva como ORGANIZER -> 403 (solo CUSTOMER compra)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/bookings",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 1,\n  \"quantity\": 2\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -85,6 +354,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/bookings",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -93,7 +372,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 1,\n  \"customerEmail\": \"no-es-un-correo\",\n  \"quantity\": 15\n}",
+              "raw": "{\n  \"ticketCategoryId\": 1,\n  \"quantity\": 15\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -119,6 +398,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/bookings",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -127,7 +416,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 4,\n  \"customerEmail\": \"ana@mail.com\",\n  \"quantity\": 1\n}",
+              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 4,\n  \"quantity\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -137,7 +426,7 @@
           }
         },
         {
-          "name": "Obtener reserva por id",
+          "name": "Obtener mi reserva -> 200",
           "event": [
             {
               "listen": "test",
@@ -151,11 +440,52 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/bookings/{{bookingId}}"
+            "url": "{{host}}/bookings/{{bookingId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
-          "name": "Listar reservas de un cliente",
+          "name": "S4: Obtener la reserva de Ana como Luis -> 403 (no es el dueño)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/bookings/{{bookingId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{luisToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "S4: Obtener la reserva de Ana como ADMIN -> 200",
           "event": [
             {
               "listen": "test",
@@ -169,7 +499,107 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/bookings?customerEmail=ana@mail.com"
+            "url": "{{host}}/bookings/{{bookingId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "Listar mis reservas -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.response.json().forEach(b => pm.expect(b.customerEmail).to.eql('ana@mail.com')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/bookings",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "S4: Luis filtra por el correo de Ana -> solo ve las suyas -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.response.json().forEach(b => pm.expect(b.customerEmail).to.eql('luis@mail.com')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/bookings?customerEmail=ana@mail.com",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{luisToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "ADMIN lista las reservas de Ana -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/bookings?customerEmail=ana@mail.com",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
@@ -188,7 +618,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/bookings/999999"
+            "url": "{{host}}/bookings/999999",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         }
       ]
@@ -197,7 +638,37 @@
       "name": "Pagos",
       "item": [
         {
-          "name": "Pagar reserva -> 200 (payment-service aprueba y se emiten los tickets)",
+          "name": "S4: Luis intenta pagar la reserva de Ana -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/bookings/{{bookingId}}/pay",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{luisToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "Pagar reserva -> 200 (booking-service reenvía el token de Ana a payment-service)",
           "event": [
             {
               "listen": "test",
@@ -213,11 +684,22 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{host}}/bookings/{{bookingId}}/pay"
+            "url": "{{host}}/bookings/{{bookingId}}/pay",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
-          "name": "Tickets emitidos",
+          "name": "Tickets emitidos -> 200",
           "event": [
             {
               "listen": "test",
@@ -232,7 +714,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/bookings/{{bookingId}}/tickets"
+            "url": "{{host}}/bookings/{{bookingId}}/tickets",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
@@ -251,7 +744,18 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{host}}/bookings/{{bookingId}}/pay"
+            "url": "{{host}}/bookings/{{bookingId}}/pay",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
@@ -270,11 +774,22 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{host}}/bookings/{{bookingId}}/cancel"
+            "url": "{{host}}/bookings/{{bookingId}}/cancel",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
-          "name": "Crear reserva de 10 entradas VIP (S/ 4500) -> 201",
+          "name": "Luis reserva 10 entradas VIP (S/ 4500) -> 201",
           "event": [
             {
               "listen": "test",
@@ -290,6 +805,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/bookings",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{luisToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -298,7 +823,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 1,\n  \"customerEmail\": \"luis@mail.com\",\n  \"quantity\": 10\n}",
+              "raw": "{\n  \"eventId\": 1,\n  \"ticketCategoryId\": 1,\n  \"quantity\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -324,11 +849,22 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{host}}/bookings/{{bigBookingId}}/pay"
+            "url": "{{host}}/bookings/{{bigBookingId}}/pay",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{luisToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
-          "name": "La reserva rechazada sigue PENDING",
+          "name": "La reserva rechazada sigue PENDING -> 200",
           "event": [
             {
               "listen": "test",
@@ -343,16 +879,27 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/bookings/{{bigBookingId}}"
+            "url": "{{host}}/bookings/{{bigBookingId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{luisToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         }
       ]
     },
     {
-      "name": "Resiliencia (actuator)",
+      "name": "Resiliencia (actuator, público en desarrollo)",
       "item": [
         {
-          "name": "Estado de los Circuit Breakers",
+          "name": "Estado de los Circuit Breakers -> 200",
           "event": [
             {
               "listen": "test",
@@ -366,11 +913,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{actuator}}/circuitbreakers"
+            "url": "{{actuator}}/circuitbreakers",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "Eventos del Circuit Breaker de payment-service",
+          "name": "Health (incluye el estado de los circuitos) -> 200",
           "event": [
             {
               "listen": "test",
@@ -384,43 +935,11 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{actuator}}/circuitbreakerevents/payment-service"
-          }
-        },
-        {
-          "name": "Eventos de Retry de event-service",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "url": "{{actuator}}/retryevents/event-service"
-          }
-        },
-        {
-          "name": "Health (incluye el estado de los circuitos)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "url": "{{actuator}}/health"
+            "url": "{{actuator}}/health",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         }
       ]

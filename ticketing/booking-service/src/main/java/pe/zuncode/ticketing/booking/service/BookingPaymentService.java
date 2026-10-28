@@ -30,8 +30,8 @@ public class BookingPaymentService {
         this.paymentGateway = paymentGateway;
     }
 
-    public BookingResponse pay(Long bookingId) {
-        BookingResponse booking = bookingService.getPayable(bookingId);
+    public BookingResponse pay(Long bookingId, Requester requester) {
+        BookingResponse booking = bookingService.getPayable(bookingId, requester);
 
         PaymentResult payment = paymentGateway.pay(
                 new PaymentRequest(booking.id(), booking.customerEmail(), booking.totalAmount()));

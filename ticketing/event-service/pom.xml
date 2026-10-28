@@ -12,7 +12,7 @@
 
     <groupId>pe.zuncode.ticketing</groupId>
     <artifactId>event-service</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.4.0-SNAPSHOT</version>
     <name>event-service</name>
     <description>Ticketing - Catálogo de recintos, eventos y zonas</description>
 
@@ -58,6 +58,13 @@
             <artifactId>spring-boot-h2console</artifactId>
         </dependency>
 
+        <!-- Sesión 4: Spring Security + validación de tokens JWT (event-service es un "resource server").
+             Trae spring-boot-starter-security: desde que está en el classpath, TODO queda protegido -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+
         <!-- Reinicio automático en desarrollo -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -69,6 +76,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Sesión 4: jwt() para simular un usuario autenticado en los tests -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

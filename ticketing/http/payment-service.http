@@ -1,15 +1,52 @@
-### Peticiones de prueba para payment-service (Sesión 3)
-### Ejecutables desde IntelliJ IDEA (HTTP Client) o VS Code (extensión REST Client)
-### Pagos simulados. La carpeta SIMULACIÓN cambia en caliente cuán lento o inestable es el servicio.
+### Peticiones de prueba para payment-service (Sesión 4)
+### IntelliJ IDEA (HTTP Client): los login guardan el token con client.global.set(...).
+### VS Code (REST Client): copia el accessToken de cada login en la variable {{...Token}} correspondiente.
+### Ejecuta primero los login. Cobrar requiere CUSTOMER; consultar pagos, ADMIN. La carpeta SIMULACIÓN es pública (herramienta del curso).
 
 @host = http://localhost:8083/api/v1
+@auth = http://localhost:8084/api/v1
 # Cambia estos valores por los ids que devuelven las peticiones "Crear ..."
 @paymentId = 1
 
+### ---------- AUTENTICACIÓN (ejecutar primero) ----------
+
+### Login CUSTOMER Ana (ana@mail.com) -> 200
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@mail.com",
+  "password": "Customer123!"
+}
+
+> {% client.global.set("anaToken", response.body.accessToken); %}
+
+### Login ADMIN (admin@ticketing.pe) -> 200
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@ticketing.pe",
+  "password": "Admin123!"
+}
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
+
 ### ---------- PAGOS ----------
 
-### Crear pago -> 201 APPROVED
+### S4: Crear pago sin token -> 401
 POST {{host}}/payments
+Content-Type: application/json
+
+{
+  "bookingId": 100,
+  "customerEmail": "ana@mail.com",
+  "amount": 900.0
+}
+
+### Crear pago como CUSTOMER -> 201 APPROVED
+POST {{host}}/payments
+Authorization: Bearer {{anaToken}}
 Content-Type: application/json
 
 {
@@ -20,6 +57,7 @@ Content-Type: application/json
 
 ### Crear pago que supera el límite (2000) -> 201 REJECTED
 POST {{host}}/payments
+Authorization: Bearer {{anaToken}}
 Content-Type: application/json
 
 {
@@ -30,6 +68,7 @@ Content-Type: application/json
 
 ### Crear pago inválido -> 400 con lista de errores
 POST {{host}}/payments
+Authorization: Bearer {{anaToken}}
 Content-Type: application/json
 
 {
@@ -38,14 +77,21 @@ Content-Type: application/json
   "amount": -5
 }
 
-### Obtener pago por id -> 200
-GET {{host}}/payments/{{paymentId}}
-
-### Pagos de una reserva -> 200
+### S4: Listar pagos como CUSTOMER -> 403
 GET {{host}}/payments?bookingId=100
+Authorization: Bearer {{anaToken}}
+
+### Obtener pago por id (ADMIN) -> 200
+GET {{host}}/payments/{{paymentId}}
+Authorization: Bearer {{adminToken}}
+
+### Pagos de una reserva (ADMIN) -> 200
+GET {{host}}/payments?bookingId=100
+Authorization: Bearer {{adminToken}}
 
 ### Pago inexistente -> 404
 GET {{host}}/payments/999999
+Authorization: Bearer {{adminToken}}
 
 ### ---------- SIMULACIÓN ----------
 
@@ -63,21 +109,13 @@ Content-Type: application/json
 
 ### Crear pago con la simulación activa -> 503
 POST {{host}}/payments
+Authorization: Bearer {{anaToken}}
 Content-Type: application/json
 
 {
   "bookingId": 102,
   "customerEmail": "ana@mail.com",
   "amount": 100.0
-}
-
-### Responder lento (5 s por pago) -> 200
-PUT {{host}}/simulation
-Content-Type: application/json
-
-{
-  "failureRate": 0.0,
-  "delay": "PT5S"
 }
 
 ### Volver a la normalidad -> 200

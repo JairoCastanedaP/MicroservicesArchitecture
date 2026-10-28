@@ -12,15 +12,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
@@ -28,6 +32,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +44,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * errores 5xx o 404 sin levantar los servicios reales, y contar cuántas llamadas llegaron.
  * <p>
  * Para que corran rápido se acortan los timeouts (500 ms) y la espera entre reintentos (50 ms).
+ * <p>
+ * Sesión 4: las peticiones llevan un token simulado de la clienta Ana ({@link #ana()}).
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:booking_test",
@@ -56,7 +63,7 @@ class BookingResilienceTests {
               "price": 450.00, "availableTickets": 5000, "onSale": true }
             """;
     private static final String BOOKING_JSON = """
-            { "eventId": 1, "ticketCategoryId": 1, "customerEmail": "ana@mail.com", "quantity": 2 }
+            { "eventId": 1, "ticketCategoryId": 1, "quantity": 2 }
             """;
 
     // http2PlainDisabled: el cliente HTTP del JDK (el que usa RestClient por defecto) intenta pasar
@@ -69,8 +76,9 @@ class BookingResilienceTests {
 
     @DynamicPropertySource
     static void remoteServiceUrls(DynamicPropertyRegistry registry) {
-        registry.add("spring.cloud.openfeign.client.config.event-service.url", wireMock::baseUrl);
-        registry.add("spring.http.serviceclient.payment-service.base-url", wireMock::baseUrl);
+        // Los dos clientes apuntan al WireMock
+        registry.add("EVENT_SERVICE_URL", wireMock::baseUrl);
+        registry.add("PAYMENT_SERVICE_URL", wireMock::baseUrl);
     }
 
     @AfterAll
@@ -213,8 +221,24 @@ class BookingResilienceTests {
 
             pay(id).andExpect(status().isPaymentRequired());
 
-            mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/bookings/{id}", id))
+            mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/bookings/{id}", id).with(ana()))
                     .andExpect(jsonPath("$.status").value("PENDING"));
+        }
+
+        // Sesión 4: booking-service reenvía a payment-service el MISMO token de la clienta (token relay)
+        @Test
+        void paymentServiceReceivesTheCustomerToken() throws Exception {
+            wireMock.stubFor(post("/api/v1/payments").willReturn(aResponse().withStatus(201)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{ \"id\": 80, \"status\": \"APPROVED\" }")));
+            long id = createdBookingId();
+
+            pay(id).andExpect(status().isOk());
+
+            wireMock.verify(postRequestedFor(urlPathMatching("/api/v1/payments"))
+                    .withHeader("Authorization", equalTo("Bearer token-de-ana"))
+                    .withRequestBody(matchingJsonPath(
+                            "$.customerEmail", equalTo("ana@mail.com"))));
         }
 
         @Test
@@ -244,7 +268,7 @@ class BookingResilienceTests {
             // la reserva sigue PENDING. Este es el problema que resuelven la idempotencia y la
             // consistencia eventual (Sesión 8).
             wireMock.verify(1, postRequestedFor(urlPathMatching("/api/v1/payments")));
-            mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/bookings/{id}", id))
+            mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/bookings/{id}", id).with(ana()))
                     .andExpect(jsonPath("$.status").value("PENDING"));
         }
 
@@ -255,13 +279,20 @@ class BookingResilienceTests {
         }
 
         private ResultActions pay(long id) throws Exception {
-            return mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/bookings/{id}/pay", id));
+            return mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/bookings/{id}/pay", id).with(ana()));
         }
     }
 
     private ResultActions createBooking() throws Exception {
         return mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/bookings")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(BOOKING_JSON));
+                .content(BOOKING_JSON)
+                .with(ana()));
+    }
+
+    // Token (simulado) de la clienta Ana: sub = ana@mail.com, rol CUSTOMER
+    static RequestPostProcessor ana() {
+        return jwt().jwt(token -> token.tokenValue("token-de-ana").subject("ana@mail.com"))
+                .authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER"));
     }
 }

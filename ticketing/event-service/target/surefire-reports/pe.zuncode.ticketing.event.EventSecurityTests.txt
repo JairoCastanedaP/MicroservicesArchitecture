@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: pe.zuncode.ticketing.event.EventSecurityTests
+-------------------------------------------------------------------------------
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.840 s -- in pe.zuncode.ticketing.event.EventSecurityTests

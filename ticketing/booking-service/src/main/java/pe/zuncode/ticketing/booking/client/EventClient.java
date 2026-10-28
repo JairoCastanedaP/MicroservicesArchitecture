@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
  * llamada y convierte el JSON en {@link TicketAvailability}.
  * <p>
  * La URL y los timeouts NO están aquí: se leen de
- * {@code spring.cloud.openfeign.client.config.event-service.*} en application.yml.
+ * {@code spring.cloud.openfeign.client.config.event-service.*} (en application.yml).
  */
 @FeignClient(name = "event-service")
 public interface EventClient {

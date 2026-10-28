@@ -1,19 +1,80 @@
-### Peticiones de prueba para event-service (Sesión 3)
-### Ejecutables desde IntelliJ IDEA (HTTP Client) o VS Code (extensión REST Client)
-### Ejecuta las peticiones en orden sobre una base de datos recién creada (con los datos semilla).
+### Peticiones de prueba para event-service (Sesión 4)
+### IntelliJ IDEA (HTTP Client): los login guardan el token con client.global.set(...).
+### VS Code (REST Client): copia el accessToken de cada login en la variable {{...Token}} correspondiente.
+### Ejecuta primero los login (user-service en 8084). GET es público; escribir requiere ORGANIZER o ADMIN; eliminar, solo ADMIN.
 
 @host = http://localhost:8081/api/v1
+@auth = http://localhost:8084/api/v1
+
+### ---------- AUTENTICACIÓN (ejecutar primero) ----------
+
+### Login ORGANIZER (organizer@ticketing.pe) -> 200
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "organizer@ticketing.pe",
+  "password": "Organizer123!"
+}
+
+> {% client.global.set("organizerToken", response.body.accessToken); %}
+
+### Login CUSTOMER Ana (ana@mail.com) -> 200
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@mail.com",
+  "password": "Customer123!"
+}
+
+> {% client.global.set("anaToken", response.body.accessToken); %}
+
+### Login ADMIN (admin@ticketing.pe) -> 200
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@ticketing.pe",
+  "password": "Admin123!"
+}
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
 
 ### ---------- RECINTOS ----------
 
-### Listar recintos -> 200
+### Listar recintos (público, sin token) -> 200
 GET {{host}}/venues
 
 ### Obtener recinto por id -> 200
 GET {{host}}/venues/1
 
-### Crear recinto -> 201 + Location
+### S4: Crear recinto sin token -> 401
 POST {{host}}/venues
+Content-Type: application/json
+
+{
+  "name": "Teatro Peruano Japonés",
+  "city": "Lima",
+  "address": "Av. Gregorio Escobedo 803, Jesús María",
+  "capacity": 1200
+}
+
+### S4: Crear recinto como CUSTOMER -> 403
+POST {{host}}/venues
+Authorization: Bearer {{anaToken}}
+Content-Type: application/json
+
+{
+  "name": "Teatro Peruano Japonés",
+  "city": "Lima",
+  "address": "Av. Gregorio Escobedo 803, Jesús María",
+  "capacity": 1200
+}
+
+### Crear recinto como ORGANIZER -> 201 + Location
+POST {{host}}/venues
+Authorization: Bearer {{organizerToken}}
 Content-Type: application/json
 
 {
@@ -25,6 +86,7 @@ Content-Type: application/json
 
 ### Crear recinto inválido -> 400 con lista de errores
 POST {{host}}/venues
+Authorization: Bearer {{organizerToken}}
 Content-Type: application/json
 
 {
@@ -35,10 +97,10 @@ Content-Type: application/json
 
 ### ---------- EVENTOS ----------
 
-### Listar todos los eventos (con recinto y zonas en UNA consulta) -> 200
+### Listar todos los eventos (público) -> 200
 GET {{host}}/events
 
-### Filtrar por ciudad (sin distinguir mayúsculas), categoría y estado -> 200
+### Filtrar por ciudad, categoría y estado -> 200
 GET {{host}}/events?city=lima&status=PUBLISHED
 
 ### Obtener evento por id -> 200
@@ -50,14 +112,12 @@ GET {{host}}/events/999
 ### Zonas (ticket categories) de un evento -> 200
 GET {{host}}/events/1/ticket-categories
 
-### S3: Disponibilidad y precio de una zona (lo consulta booking-service) -> 200
+### Disponibilidad y precio de una zona (la consulta booking-service, sin token) -> 200
 GET {{host}}/events/1/ticket-categories/1/availability
 
-### S3: Disponibilidad de una zona que no es del evento -> 404
-GET {{host}}/events/1/ticket-categories/4/availability
-
-### Crear evento -> 201 + Location (nace en DRAFT)
+### Crear evento como ORGANIZER -> 201 (nace en DRAFT)
 POST {{host}}/events
+Authorization: Bearer {{organizerToken}}
 Content-Type: application/json
 
 {
@@ -82,6 +142,7 @@ Content-Type: application/json
 
 ### Bean Validation: fecha pasada y zona con precio negativo -> 400
 POST {{host}}/events
+Authorization: Bearer {{organizerToken}}
 Content-Type: application/json
 
 {
@@ -98,51 +159,13 @@ Content-Type: application/json
   ]
 }
 
-### Categoría inexistente -> 400 (JSON ilegible)
-POST {{host}}/events
-Content-Type: application/json
-
-{
-  "name": "Evento raro",
-  "category": "OPERA",
-  "venueId": 1,
-  "dateTime": "2027-01-01T20:00:00"
-}
-
-### Recinto inexistente -> 400
-POST {{host}}/events
-Content-Type: application/json
-
-{
-  "name": "Sin recinto",
-  "category": "MUSIC",
-  "venueId": 999,
-  "dateTime": "2027-01-01T20:00:00"
-}
-
-### Zonas superan el aforo del recinto (800) -> 400
-POST {{host}}/events
-Content-Type: application/json
-
-{
-  "name": "Sobreaforo",
-  "category": "THEATER",
-  "venueId": 3,
-  "dateTime": "2027-05-10T19:00:00",
-  "ticketCategories": [
-    {
-      "name": "Platea",
-      "price": 90.0,
-      "capacity": 900
-    }
-  ]
-}
-
 ### Publicar evento sin zonas -> 409
 PATCH {{host}}/events/3/publish
+Authorization: Bearer {{organizerToken}}
 
 ### Actualizar evento (agregar zonas al evento 3, que está en DRAFT) -> 200
 PUT {{host}}/events/3
+Authorization: Bearer {{organizerToken}}
 Content-Type: application/json
 
 {
@@ -165,8 +188,18 @@ Content-Type: application/json
   ]
 }
 
-### Publicar evento -> 200
+### Publicar evento como ORGANIZER -> 200
 PATCH {{host}}/events/3/publish
+Authorization: Bearer {{organizerToken}}
 
-### Eliminar evento -> 204
+### S4: Publicar como CUSTOMER -> 403
+PATCH {{host}}/events/3/publish
+Authorization: Bearer {{anaToken}}
+
+### S4: Eliminar evento como ORGANIZER -> 403 (solo ADMIN)
 DELETE {{host}}/events/2
+Authorization: Bearer {{organizerToken}}
+
+### Eliminar evento como ADMIN -> 204
+DELETE {{host}}/events/2
+Authorization: Bearer {{adminToken}}

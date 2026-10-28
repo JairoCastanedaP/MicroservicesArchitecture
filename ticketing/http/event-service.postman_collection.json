@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Ticketing - event-service (Sesión 3)",
-    "description": "Peticiones de prueba para event-service. Ejecuta las peticiones en orden sobre una base de datos recién creada (con los datos semilla). Cada petición incluye pruebas del código HTTP esperado (pestaña Scripts > Post-response).",
+    "name": "Ticketing - event-service (Sesión 4)",
+    "description": "Peticiones de prueba para event-service. Ejecuta primero los login (user-service en 8084). GET es público; escribir requiere ORGANIZER o ADMIN; eliminar, solo ADMIN. Los login guardan cada token en una variable de la colección. Cada petición incluye pruebas del código HTTP esperado (pestaña Scripts > Post-response).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -9,14 +9,150 @@
       "key": "host",
       "value": "http://localhost:8081/api/v1",
       "type": "string"
+    },
+    {
+      "key": "auth",
+      "value": "http://localhost:8084/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "anaToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "organizerToken",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
+      "name": "Autenticación (ejecutar primero)",
+      "item": [
+        {
+          "name": "Login ORGANIZER (organizer@ticketing.pe) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('organizerToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"organizer@ticketing.pe\",\n  \"password\": \"Organizer123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login CUSTOMER Ana (ana@mail.com) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('anaToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@mail.com\",\n  \"password\": \"Customer123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login ADMIN (admin@ticketing.pe) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@ticketing.pe\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Recintos",
       "item": [
         {
-          "name": "Listar recintos",
+          "name": "Listar recintos (público, sin token) -> 200",
           "event": [
             {
               "listen": "test",
@@ -31,11 +167,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/venues"
+            "url": "{{host}}/venues",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "Obtener recinto por id",
+          "name": "Obtener recinto por id -> 200",
           "event": [
             {
               "listen": "test",
@@ -50,11 +190,98 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/venues/1"
+            "url": "{{host}}/venues/1",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "Crear recinto -> 201 + Location",
+          "name": "S4: Crear recinto sin token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().title).to.eql('No autenticado'); });",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/venues",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Teatro Peruano Japonés\",\n  \"city\": \"Lima\",\n  \"address\": \"Av. Gregorio Escobedo 803, Jesús María\",\n  \"capacity\": 1200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "S4: Crear recinto como CUSTOMER -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().title).to.eql('Acceso denegado'); });",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/venues",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Teatro Peruano Japonés\",\n  \"city\": \"Lima\",\n  \"address\": \"Av. Gregorio Escobedo 803, Jesús María\",\n  \"capacity\": 1200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear recinto como ORGANIZER -> 201 + Location",
           "event": [
             {
               "listen": "test",
@@ -70,6 +297,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/venues",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -105,6 +342,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/venues",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -128,7 +375,7 @@
       "name": "Eventos",
       "item": [
         {
-          "name": "Listar todos los eventos (con recinto y zonas en UNA consulta)",
+          "name": "Listar todos los eventos (público) -> 200",
           "event": [
             {
               "listen": "test",
@@ -142,11 +389,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/events"
+            "url": "{{host}}/events",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "Filtrar por ciudad (sin distinguir mayúsculas), categoría y estado",
+          "name": "Filtrar por ciudad, categoría y estado -> 200",
           "event": [
             {
               "listen": "test",
@@ -161,11 +412,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/events?city=lima&status=PUBLISHED"
+            "url": "{{host}}/events?city=lima&status=PUBLISHED",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "Obtener evento por id",
+          "name": "Obtener evento por id -> 200",
           "event": [
             {
               "listen": "test",
@@ -180,7 +435,11 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/events/1"
+            "url": "{{host}}/events/1",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
@@ -200,11 +459,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/events/999"
+            "url": "{{host}}/events/999",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "Zonas (ticket categories) de un evento",
+          "name": "Zonas (ticket categories) de un evento -> 200",
           "event": [
             {
               "listen": "test",
@@ -218,11 +481,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/events/1/ticket-categories"
+            "url": "{{host}}/events/1/ticket-categories",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "S3: Disponibilidad y precio de una zona (lo consulta booking-service)",
+          "name": "Disponibilidad y precio de una zona (la consulta booking-service, sin token) -> 200",
           "event": [
             {
               "listen": "test",
@@ -238,30 +505,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/events/1/ticket-categories/1/availability"
+            "url": "{{host}}/events/1/ticket-categories/1/availability",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "S3: Disponibilidad de una zona que no es del evento -> 404",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
-                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "url": "{{host}}/events/1/ticket-categories/4/availability"
-          }
-        },
-        {
-          "name": "Crear evento -> 201 + Location (nace en DRAFT)",
+          "name": "Crear evento como ORGANIZER -> 201 (nace en DRAFT)",
           "event": [
             {
               "listen": "test",
@@ -277,6 +529,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/events",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -312,6 +574,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/events",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -321,108 +593,6 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Evento del pasado\",\n  \"category\": \"MUSIC\",\n  \"venueId\": 1,\n  \"dateTime\": \"2020-01-01T20:00:00\",\n  \"ticketCategories\": [\n    {\n      \"name\": \"VIP\",\n      \"price\": -10,\n      \"capacity\": 100\n    }\n  ]\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Categoría inexistente -> 400 (JSON ilegible)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
-                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "url": "{{host}}/events",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Evento raro\",\n  \"category\": \"OPERA\",\n  \"venueId\": 1,\n  \"dateTime\": \"2027-01-01T20:00:00\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Recinto inexistente -> 400",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
-                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "url": "{{host}}/events",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Sin recinto\",\n  \"category\": \"MUSIC\",\n  \"venueId\": 999,\n  \"dateTime\": \"2027-01-01T20:00:00\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Zonas superan el aforo del recinto (800) -> 400",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
-                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "url": "{{host}}/events",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Sobreaforo\",\n  \"category\": \"THEATER\",\n  \"venueId\": 3,\n  \"dateTime\": \"2027-05-10T19:00:00\",\n  \"ticketCategories\": [\n    {\n      \"name\": \"Platea\",\n      \"price\": 90.0,\n      \"capacity\": 900\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -447,11 +617,22 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{host}}/events/3/publish"
+            "url": "{{host}}/events/3/publish",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
-          "name": "Actualizar evento (agregar zonas al evento 3, que está en DRAFT)",
+          "name": "Actualizar evento (agregar zonas al evento 3, que está en DRAFT) -> 200",
           "event": [
             {
               "listen": "test",
@@ -467,6 +648,16 @@
           "request": {
             "method": "PUT",
             "url": "{{host}}/events/3",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -485,7 +676,7 @@
           }
         },
         {
-          "name": "Publicar evento -> 200",
+          "name": "Publicar evento como ORGANIZER -> 200",
           "event": [
             {
               "listen": "test",
@@ -500,11 +691,82 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{host}}/events/3/publish"
+            "url": "{{host}}/events/3/publish",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
-          "name": "Eliminar evento -> 204",
+          "name": "S4: Publicar como CUSTOMER -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{host}}/events/3/publish",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "S4: Eliminar evento como ORGANIZER -> 403 (solo ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{host}}/events/2",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{organizerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "Eliminar evento como ADMIN -> 204",
           "event": [
             {
               "listen": "test",
@@ -518,7 +780,18 @@
           ],
           "request": {
             "method": "DELETE",
-            "url": "{{host}}/events/2"
+            "url": "{{host}}/events/2",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         }
       ]

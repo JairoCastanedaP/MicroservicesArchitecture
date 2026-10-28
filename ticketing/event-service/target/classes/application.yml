@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: event-service
+
+  # Sesión 2: cada servicio tiene SU base de datos (Database per Service).
+  # H2 guarda los datos en el archivo ./data/event_db.mv.db (sobreviven al reinicio).
+  # AUTO_SERVER=TRUE permite abrir la misma base desde dos procesos: la app y los tests.
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/event_db;AUTO_SERVER=TRUE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+
+  # Consola web de H2 en http://localhost:8081/h2-console (solo para desarrollo)
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    # Flyway crea el esquema; Hibernate solo comprueba que las entidades coincidan con las tablas
+    hibernate:
+      ddl-auto: validate
+    # Sin "Open Session in View": la sesión de Hibernate se cierra al terminar el servicio (@Transactional),
+    # así los problemas de carga perezosa (LAZY) aparecen en desarrollo y no en producción
+    open-in-view: false
+
+  # Sesión 4: event-service es un "resource server": valida los JWT con la clave pública de user-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8084/.well-known/jwks.json}
+          issuer-uri: ${ticketing.jwt.issuer}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
+  web:
+    error:
+      include-message: always
+      include-stacktrace: never
+
+server:
+  # Cada microservicio tiene un puerto por defecto (event-service = 8081)
+  port: ${SERVER_PORT:8081}
+
+ticketing:
+  jwt:
+    issuer: http://localhost:8084
+  seed-data:
+    enabled: true

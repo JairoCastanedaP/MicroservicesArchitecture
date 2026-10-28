@@ -1,0 +1,122 @@
+### Peticiones de prueba para user-service (Sesión 4)
+### IntelliJ IDEA (HTTP Client): los login guardan el token con client.global.set(...).
+### VS Code (REST Client): copia el accessToken de cada login en la variable {{...Token}} correspondiente.
+### Registro, login y tokens JWT. Ejecuta las peticiones en orden sobre una base recién creada (usuarios semilla: admin@ticketing.pe, organizer@ticketing.pe, ana@mail.com y luis@mail.com).
+
+@host = http://localhost:8084/api/v1
+@auth = http://localhost:8084/api/v1
+@root = http://localhost:8084
+# Cambia estos valores por los ids que devuelven las peticiones "Crear ..."
+@mariaId = 5
+
+### ---------- REGISTRO ----------
+
+### Registrarse -> 201 (todo usuario nuevo es CUSTOMER)
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "maria@mail.com",
+  "password": "Secreta123",
+  "fullName": "María Quispe"
+}
+
+### Registrarse con un correo ya usado -> 409
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "ana@mail.com",
+  "password": "OtraClave123",
+  "fullName": "Ana"
+}
+
+### Registro inválido -> 400 con lista de errores
+POST {{host}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "no-es-un-correo",
+  "password": "123",
+  "fullName": ""
+}
+
+### ---------- LOGIN ----------
+
+### Login CUSTOMER Ana (ana@mail.com) -> 200
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@mail.com",
+  "password": "Customer123!"
+}
+
+> {% client.global.set("anaToken", response.body.accessToken); %}
+
+### Login ADMIN (admin@ticketing.pe) -> 200
+POST {{auth}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@ticketing.pe",
+  "password": "Admin123!"
+}
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
+
+### Login con contraseña incorrecta -> 401
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@mail.com",
+  "password": "incorrecta"
+}
+
+### Clave pública para validar los tokens (JWKS, público) -> 200
+GET {{root}}/.well-known/jwks.json
+
+### ---------- USUARIOS ----------
+
+### Mi perfil sin token -> 401
+GET {{host}}/users/me
+
+### Mi perfil (con el token de Ana) -> 200
+GET {{host}}/users/me
+Authorization: Bearer {{anaToken}}
+
+### Listar usuarios como CUSTOMER -> 403
+GET {{host}}/users
+Authorization: Bearer {{anaToken}}
+
+### Listar usuarios como ADMIN -> 200
+GET {{host}}/users
+Authorization: Bearer {{adminToken}}
+
+### Convertir a María en ORGANIZER (ADMIN) -> 200
+PATCH {{host}}/users/{{mariaId}}/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "ORGANIZER"
+}
+
+### Cambiar un rol como CUSTOMER -> 403
+PATCH {{host}}/users/{{mariaId}}/role
+Authorization: Bearer {{anaToken}}
+Content-Type: application/json
+
+{
+  "role": "ADMIN"
+}
+
+### Cambiar el rol de un usuario inexistente -> 404
+PATCH {{host}}/users/999999/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "ORGANIZER"
+}

@@ -1,13 +1,28 @@
 {
   "info": {
-    "name": "Ticketing - payment-service (Sesión 3)",
-    "description": "Peticiones de prueba para payment-service. Pagos simulados. La carpeta SIMULACIÓN cambia en caliente cuán lento o inestable es el servicio. Cada petición incluye pruebas del código HTTP esperado (pestaña Scripts > Post-response).",
+    "name": "Ticketing - payment-service (Sesión 4)",
+    "description": "Peticiones de prueba para payment-service. Ejecuta primero los login. Cobrar requiere CUSTOMER; consultar pagos, ADMIN. La carpeta SIMULACIÓN es pública (herramienta del curso). Los login guardan cada token en una variable de la colección. Cada petición incluye pruebas del código HTTP esperado (pestaña Scripts > Post-response).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "host",
       "value": "http://localhost:8083/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "auth",
+      "value": "http://localhost:8084/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "anaToken",
+      "value": "",
       "type": "string"
     },
     {
@@ -18,10 +33,126 @@
   ],
   "item": [
     {
+      "name": "Autenticación (ejecutar primero)",
+      "item": [
+        {
+          "name": "Login CUSTOMER Ana (ana@mail.com) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('anaToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana@mail.com\",\n  \"password\": \"Customer123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login ADMIN (admin@ticketing.pe) -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{auth}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@ticketing.pe\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Pagos",
       "item": [
         {
-          "name": "Crear pago -> 201 APPROVED",
+          "name": "S4: Crear pago sin token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/payments",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": 100,\n  \"customerEmail\": \"ana@mail.com\",\n  \"amount\": 900.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear pago como CUSTOMER -> 201 APPROVED",
           "event": [
             {
               "listen": "test",
@@ -38,6 +169,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/payments",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -72,6 +213,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/payments",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -107,6 +258,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/payments",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -125,7 +286,37 @@
           }
         },
         {
-          "name": "Obtener pago por id",
+          "name": "S4: Listar pagos como CUSTOMER -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/payments?bookingId=100",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
+          }
+        },
+        {
+          "name": "Obtener pago por id (ADMIN) -> 200",
           "event": [
             {
               "listen": "test",
@@ -139,11 +330,22 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/payments/{{paymentId}}"
+            "url": "{{host}}/payments/{{paymentId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
-          "name": "Pagos de una reserva",
+          "name": "Pagos de una reserva (ADMIN) -> 200",
           "event": [
             {
               "listen": "test",
@@ -158,7 +360,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/payments?bookingId=100"
+            "url": "{{host}}/payments?bookingId=100",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         },
         {
@@ -177,7 +390,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/payments/999999"
+            "url": "{{host}}/payments/999999",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": []
           }
         }
       ]
@@ -186,7 +410,7 @@
       "name": "Simulación",
       "item": [
         {
-          "name": "Ver la simulación actual",
+          "name": "Ver la simulación actual -> 200",
           "event": [
             {
               "listen": "test",
@@ -200,11 +424,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{host}}/simulation"
+            "url": "{{host}}/simulation",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": []
           }
         },
         {
-          "name": "Fallar siempre (failureRate 1.0)",
+          "name": "Fallar siempre (failureRate 1.0) -> 200",
           "event": [
             {
               "listen": "test",
@@ -219,6 +447,9 @@
           "request": {
             "method": "PUT",
             "url": "{{host}}/simulation",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -253,6 +484,16 @@
           "request": {
             "method": "POST",
             "url": "{{host}}/payments",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{anaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -271,40 +512,7 @@
           }
         },
         {
-          "name": "Responder lento (5 s por pago)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PUT",
-            "url": "{{host}}/simulation",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"failureRate\": 0.0,\n  \"delay\": \"PT5S\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Volver a la normalidad",
+          "name": "Volver a la normalidad -> 200",
           "event": [
             {
               "listen": "test",
@@ -320,6 +528,9 @@
           "request": {
             "method": "PUT",
             "url": "{{host}}/simulation",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [
               {
                 "key": "Content-Type",

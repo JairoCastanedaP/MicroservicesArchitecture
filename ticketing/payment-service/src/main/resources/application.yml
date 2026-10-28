@@ -2,8 +2,7 @@ spring:
   application:
     name: payment-service
 
-  # Database per Service: payment-service tiene SU propia base de datos H2
-  # (archivo ./data/payment_db.mv.db).
+  # Database per Service: payment-service tiene SU propia base de datos H2 (archivo ./data/payment_db.mv.db)
   datasource:
     url: ${DB_URL:jdbc:h2:file:./data/payment_db;AUTO_SERVER=TRUE}
     username: ${DB_USERNAME:sa}
@@ -19,6 +18,14 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8084/.well-known/jwks.json}
+          issuer-uri: ${ticketing.jwt.issuer}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
   web:
     error:
       include-message: always
@@ -27,16 +34,11 @@ spring:
 server:
   port: ${SERVER_PORT:8083}
 
-logging:
-  level:
-    org.hibernate.SQL: ${SQL_LOG_LEVEL:info}
-
-# Propiedades propias del servicio (se leen con PaymentProperties)
 ticketing:
+  jwt:
+    issuer: http://localhost:8084
   payment:
-    # Un pago mayor a este monto se rechaza (status REJECTED)
-    max-amount: ${PAYMENT_MAX_AMOUNT:2000.00}
-    # Valores iniciales de la simulación de fallas (se cambian en caliente con PUT /api/v1/simulation)
+    max-amount: 2000.00
     simulation:
-      failure-rate: ${PAYMENT_FAILURE_RATE:0.0}   # 0.0 = nunca falla, 0.5 = falla la mitad, 1.0 = siempre
-      delay: ${PAYMENT_DELAY:0ms}                 # demora de cada pago: 0ms, 500ms, 3s...
+      failure-rate: 0.0
+      delay: 0ms

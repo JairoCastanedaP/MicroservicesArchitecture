@@ -4,8 +4,7 @@ spring:
 
   # Sesión 2: cada servicio tiene SU base de datos (Database per Service).
   # H2 guarda los datos en el archivo ./data/event_db.mv.db (sobreviven al reinicio).
-  # AUTO_SERVER=TRUE permite abrir la misma base desde dos procesos (la app y los tests).
-  # En otros ambientes se sobrescribe con variables de entorno (Docker, Azure, Kubernetes...).
+  # AUTO_SERVER=TRUE permite abrir la misma base desde dos procesos: la app y los tests.
   datasource:
     url: ${DB_URL:jdbc:h2:file:./data/event_db;AUTO_SERVER=TRUE}
     username: ${DB_USERNAME:sa}
@@ -24,24 +23,26 @@ spring:
     # así los problemas de carga perezosa (LAZY) aparecen en desarrollo y no en producción
     open-in-view: false
 
+  # Sesión 4: event-service es un "resource server": valida los JWT con la clave pública de user-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8084/.well-known/jwks.json}
+          issuer-uri: ${ticketing.jwt.issuer}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
   web:
     error:
-      # Nota Boot 4: antes era server.error.include-*; ahora es spring.web.error.include-*
       include-message: always
       include-stacktrace: never
 
 server:
-  # Cada microservicio tiene un puerto fijo (event-service = 8081, booking-service = 8082...).
-  # Se puede sobrescribir con la variable de entorno SERVER_PORT.
+  # Cada microservicio tiene un puerto por defecto (event-service = 8081)
   port: ${SERVER_PORT:8081}
 
-logging:
-  level:
-    # Muestra el SQL que genera Hibernate (útil para aprender y para detectar el problema N+1).
-    # Cámbialo a "info" con la variable de entorno SQL_LOG_LEVEL=info si genera demasiado ruido.
-    org.hibernate.SQL: ${SQL_LOG_LEVEL:debug}
-
-# Propiedades propias del servicio
 ticketing:
+  jwt:
+    issuer: http://localhost:8084
   seed-data:
     enabled: true

@@ -1,0 +1,5 @@
+# Created at 2026-10-26T23:44:31.510
+Boot Manifest-JAR contains absolute paths in classpath 'D:\c\JAV16OCT26\Sesion04\zuncode-ticketing\event-service\target\test-classes'
+Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
+'other' has different root
+

@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: payment-service
+
+  # Database per Service: payment-service tiene SU propia base de datos H2 (archivo ./data/payment_db.mv.db)
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/payment_db;AUTO_SERVER=TRUE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+
+  # Consola web de H2 en http://localhost:8083/h2-console (solo para desarrollo)
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8084/.well-known/jwks.json}
+          issuer-uri: ${ticketing.jwt.issuer}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
+  web:
+    error:
+      include-message: always
+      include-stacktrace: never
+
+server:
+  port: ${SERVER_PORT:8083}
+
+ticketing:
+  jwt:
+    issuer: http://localhost:8084
+  payment:
+    max-amount: 2000.00
+    simulation:
+      failure-rate: 0.0
+      delay: 0ms

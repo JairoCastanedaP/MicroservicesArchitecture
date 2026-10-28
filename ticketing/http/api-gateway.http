@@ -1,0 +1,118 @@
+### Peticiones de prueba para api-gateway (Sesión 4)
+### IntelliJ IDEA (HTTP Client): los login guardan el token con client.global.set(...).
+### VS Code (REST Client): copia el accessToken de cada login en la variable {{...Token}} correspondiente.
+### TODO entra por el puerto 8080: el gateway envía cada petición al servicio que le corresponde según su ruta. Requiere los cinco servicios en marcha.
+
+@host = http://localhost:8080/api/v1
+@actuator = http://localhost:8080/actuator
+# Cambia estos valores por los ids que devuelven las peticiones "Crear ..."
+@bookingId = 1
+
+### ---------- AUTENTICACIÓN (ejecutar primero) ----------
+
+### Login CUSTOMER Ana (ana@mail.com) -> 200
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ana@mail.com",
+  "password": "Customer123!"
+}
+
+> {% client.global.set("anaToken", response.body.accessToken); %}
+
+### Login ORGANIZER (organizer@ticketing.pe) -> 200
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "organizer@ticketing.pe",
+  "password": "Organizer123!"
+}
+
+> {% client.global.set("organizerToken", response.body.accessToken); %}
+
+### Login ADMIN (admin@ticketing.pe) -> 200
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@ticketing.pe",
+  "password": "Admin123!"
+}
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
+
+### ---------- CATÁLOGO (event-service) ----------
+
+### Cartelera pública, sin token -> 200 (header X-Gateway)
+GET {{host}}/events?status=PUBLISHED
+
+### Crear recinto sin token -> 401 (lo corta el gateway)
+POST {{host}}/venues
+Content-Type: application/json
+
+{
+  "name": "Arena Gateway",
+  "city": "Lima",
+  "address": "Av. Javier Prado 100",
+  "capacity": 3000
+}
+
+### Crear recinto como CUSTOMER -> 403 (lo corta event-service)
+POST {{host}}/venues
+Authorization: Bearer {{anaToken}}
+Content-Type: application/json
+
+{
+  "name": "Arena Gateway",
+  "city": "Lima",
+  "address": "Av. Javier Prado 100",
+  "capacity": 3000
+}
+
+### Crear recinto como ORGANIZER -> 201
+POST {{host}}/venues
+Authorization: Bearer {{organizerToken}}
+Content-Type: application/json
+
+{
+  "name": "Arena Gateway",
+  "city": "Lima",
+  "address": "Av. Javier Prado 100",
+  "capacity": 3000
+}
+
+### ---------- COMPRA (booking-service → event-service y payment-service) ----------
+
+### Reservar como Ana -> 201
+POST {{host}}/bookings
+Authorization: Bearer {{anaToken}}
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "ticketCategoryId": 2,
+  "quantity": 1
+}
+
+### Pagar -> 200 CONFIRMED
+POST {{host}}/bookings/{{bookingId}}/pay
+Authorization: Bearer {{anaToken}}
+
+### Mis reservas -> 200
+GET {{host}}/bookings
+Authorization: Bearer {{anaToken}}
+
+### Pagos de la reserva (ADMIN, payment-service) -> 200
+GET {{host}}/payments?bookingId={{bookingId}}
+Authorization: Bearer {{adminToken}}
+
+### ---------- USUARIOS (user-service) ----------
+
+### Mi perfil -> 200
+GET {{host}}/users/me
+Authorization: Bearer {{anaToken}}
+
+### Rutas configuradas en el gateway (Actuator) -> 200
+GET {{actuator}}/gateway/routes

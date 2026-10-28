@@ -1,0 +1,113 @@
+spring:
+  application:
+    name: booking-service
+
+  # Database per Service: booking-service tiene SU propia base de datos H2 (archivo ./data/booking_db.mv.db)
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/booking_db;AUTO_SERVER=TRUE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+
+  # Consola web de H2 en http://localhost:8082/h2-console (solo para desarrollo)
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8084/.well-known/jwks.json}
+          issuer-uri: ${ticketing.jwt.issuer}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
+  web:
+    error:
+      include-message: always
+      include-stacktrace: never
+
+  # ── Sesión 3: clientes HTTP hacia otros microservicios ─────────────────────────────
+  cloud:
+    openfeign:
+      client:
+        config:
+          # @FeignClient(name = "event-service")
+          event-service:
+            url: ${EVENT_SERVICE_URL:http://localhost:8081}
+            connect-timeout: 1000     # ms para establecer la conexión TCP
+            read-timeout: 2000        # ms máximos esperando la respuesta
+            logger-level: basic       # registra método, URL, status y duración (requiere DEBUG del paquete)
+
+  http:
+    serviceclient:
+      # Grupo de @ImportHttpServices(group = "payment-service")
+      payment-service:
+        base-url: ${PAYMENT_SERVICE_URL:http://localhost:8083}
+        connect-timeout: 1s
+        read-timeout: 3s
+
+server:
+  port: ${SERVER_PORT:8082}
+
+# ── Sesión 3: Resilience4j ─────────────────────────────────────────────────────────────
+resilience4j:
+  retry:
+    instances:
+      event-service:
+        max-attempts: 3                       # 1 intento + 2 reintentos
+        wait-duration: 500ms                  # espera antes del primer reintento
+        enable-exponential-backoff: true      # 500ms, 1s, 2s... (cada espera x2)
+        exponential-backoff-multiplier: 2
+        retry-exceptions:                     # SOLO se reintentan fallas transitorias:
+          - feign.RetryableException          #   timeout o conexión rechazada
+          - feign.FeignException$FeignServerException   #   respuestas 5xx
+        # un 404 (InvalidRequestException) no está en la lista → no se reintenta
+
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10                 # mira las últimas 10 llamadas
+        minimum-number-of-calls: 5              # no decide nada con menos de 5 llamadas
+        failure-rate-threshold: 50              # ≥ 50 % de fallas → OPEN
+        wait-duration-in-open-state: 15s        # tiempo en OPEN antes de volver a probar
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true         # aparece en /actuator/health
+    instances:
+      event-service:
+        base-config: default
+        record-exceptions:                      # qué cuenta como falla
+          - feign.RetryableException
+          - feign.FeignException$FeignServerException
+      payment-service:
+        base-config: default
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException   # timeout o conexión rechazada
+          - org.springframework.web.client.HttpServerErrorException  # respuestas 5xx
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, circuitbreakers, circuitbreakerevents, retries, retryevents
+  health:
+    circuitbreakers:
+      enabled: true
+
+ticketing:
+  jwt:
+    issuer: http://localhost:8084
+  booking:
+    # Tiempo que una reserva PENDING retiene las entradas antes de expirar (10m, 30s, 1h...)
+    hold-time: ${BOOKING_HOLD_TIME:10m}
+
+logging:
+  level:
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:info}
+    pe.zuncode.ticketing.booking.client: debug   # logs de Feign (logger-level: basic)

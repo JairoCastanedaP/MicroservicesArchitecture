@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -76,6 +79,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("Violación de integridad de datos: {}", ex.getMostSpecificCause().getMessage());
         return problem(HttpStatus.CONFLICT, "Conflicto de datos",
                 "La operación no se puede completar porque entra en conflicto con datos existentes");
+    }
+
+    // Sesión 4: 401: no hay token, venció o su firma no es válida
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handleAuthentication(AuthenticationException ex) {
+        String detail = ex instanceof InsufficientAuthenticationException
+                ? "Necesitas iniciar sesión: envía el header Authorization: Bearer <token>"
+                : "El token no es válido o ya expiró";
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .body(problem(HttpStatus.UNAUTHORIZED, "No autenticado", detail));
+    }
+
+    // Sesión 4: 403: el token es válido, pero el usuario no tiene el rol (o no es el dueño del recurso)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return problem(HttpStatus.FORBIDDEN, "Acceso denegado", "No tienes permisos para realizar esta operación");
     }
 
     @ExceptionHandler(Exception.class)

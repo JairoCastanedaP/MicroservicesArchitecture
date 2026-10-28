@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import java.time.Duration;
 
 /**
- * Configuración tipada de las propiedades {@code ticketing.booking.*} de application.yml.
+ * Configuración tipada de las propiedades {@code ticketing.booking.*}.
  * Spring convierte "10m" o "30s" en un {@link Duration}.
  */
 @ConfigurationProperties(prefix = "ticketing.booking")

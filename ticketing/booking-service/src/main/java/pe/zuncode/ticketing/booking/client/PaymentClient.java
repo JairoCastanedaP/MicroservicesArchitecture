@@ -10,7 +10,7 @@ import org.springframework.web.service.annotation.PostExchange;
  * <p>
  * Spring Boot crea la implementación sobre un {@code RestClient}; se registra en
  * {@code HttpClientsConfig} con {@code @ImportHttpServices}. La URL base y los timeouts se leen de
- * {@code spring.http.serviceclient.payment-service.*} en application.yml.
+ * {@code spring.http.serviceclient.payment-service.*} (en application.yml).
  */
 @HttpExchange("/api/v1/payments")
 public interface PaymentClient {

@@ -1,0 +1,6 @@
+#FileLock
+#Mon Oct 26 22:52:54 PET 2026
+hostName=CENTRAL
+id=1a17b7d5761438ef3666c975c32998b65501fbf5ec5
+method=file
+server=192.168.18.17\:57712

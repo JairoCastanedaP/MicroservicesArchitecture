@@ -13,7 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * "Caos controlado" para la Sesión 3: hace que payment-service sea lento o falle a propósito,
  * para ver cómo reaccionan los timeouts, el Retry y el Circuit Breaker de booking-service.
  * <p>
- * Los valores arrancan con lo que diga application.yml y se pueden cambiar sin reiniciar
+ * Los valores arrancan con lo que diga la configuración ({@code application.yml}) y se pueden cambiar sin reiniciar
  * con {@code PUT /api/v1/simulation}. {@code volatile}: el cambio lo ven de inmediato
  * todos los hilos que atienden peticiones.
  * <p>

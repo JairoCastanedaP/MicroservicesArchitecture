@@ -2,8 +2,7 @@ spring:
   application:
     name: booking-service
 
-  # Database per Service: booking-service tiene SU propia base de datos H2
-  # (archivo ./data/booking_db.mv.db). Nunca se conecta a event_db.
+  # Database per Service: booking-service tiene SU propia base de datos H2 (archivo ./data/booking_db.mv.db)
   datasource:
     url: ${DB_URL:jdbc:h2:file:./data/booking_db;AUTO_SERVER=TRUE}
     username: ${DB_USERNAME:sa}
@@ -19,6 +18,14 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8084/.well-known/jwks.json}
+          issuer-uri: ${ticketing.jwt.issuer}
+          authorities-claim-name: roles
+          authority-prefix: ROLE_
   web:
     error:
       include-message: always
@@ -29,7 +36,7 @@ spring:
     openfeign:
       client:
         config:
-          # Configuración del @FeignClient(name = "event-service")
+          # @FeignClient(name = "event-service")
           event-service:
             url: ${EVENT_SERVICE_URL:http://localhost:8081}
             connect-timeout: 1000     # ms para establecer la conexión TCP
@@ -84,26 +91,23 @@ resilience4j:
           - org.springframework.web.client.ResourceAccessException   # timeout o conexión rechazada
           - org.springframework.web.client.HttpServerErrorException  # respuestas 5xx
 
-# Actuator: para ver el estado de los circuitos y los reintentos
 management:
   endpoints:
     web:
       exposure:
-        include: health, circuitbreakers, circuitbreakerevents, retries, retryevents
-  endpoint:
-    health:
-      show-details: always
+        include: health, info, circuitbreakers, circuitbreakerevents, retries, retryevents
   health:
     circuitbreakers:
       enabled: true
+
+ticketing:
+  jwt:
+    issuer: http://localhost:8084
+  booking:
+    # Tiempo que una reserva PENDING retiene las entradas antes de expirar (10m, 30s, 1h...)
+    hold-time: ${BOOKING_HOLD_TIME:10m}
 
 logging:
   level:
     org.hibernate.SQL: ${SQL_LOG_LEVEL:info}
     pe.zuncode.ticketing.booking.client: debug   # logs de Feign (logger-level: basic)
-
-# Propiedades propias del servicio (se leen con BookingProperties)
-ticketing:
-  booking:
-    # Tiempo que una reserva PENDING retiene las entradas antes de expirar (10m, 30s, 1h...)
-    hold-time: ${BOOKING_HOLD_TIME:10m}
