@@ -66,6 +66,10 @@ public class Booking {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
+    /** Sesión 3: id del pago aprobado en payment-service (referencia lógica, sin FK). */
+    @Column(name = "payment_id")
+    private Long paymentId;
+
     /**
      * Bloqueo optimista. Cada UPDATE se ejecuta como
      * {@code ... WHERE id = ? AND version = ?} e incrementa la versión.
@@ -97,6 +101,18 @@ public class Booking {
 
     public boolean isExpired(LocalDateTime now) {
         return now.isAfter(expiresAt);
+    }
+
+    /**
+     * Sesión 3: el pago fue aprobado → la reserva se confirma y se emite un ticket por entrada.
+     */
+    public void confirm(Long paymentId, LocalDateTime now) {
+        this.status = BookingStatus.CONFIRMED;
+        this.paymentId = paymentId;
+        this.confirmedAt = now;
+        for (int i = 0; i < quantity; i++) {
+            addTicket(new Ticket(now)); // cascade: se insertan al hacer commit
+        }
     }
 
     public void addTicket(Ticket ticket) {
@@ -152,8 +168,8 @@ public class Booking {
         return confirmedAt;
     }
 
-    public void setConfirmedAt(LocalDateTime confirmedAt) {
-        this.confirmedAt = confirmedAt;
+    public Long getPaymentId() {
+        return paymentId;
     }
 
     public Long getVersion() {

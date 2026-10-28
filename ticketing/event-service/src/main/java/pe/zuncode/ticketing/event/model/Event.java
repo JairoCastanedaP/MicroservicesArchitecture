@@ -1,11 +1,30 @@
 package pe.zuncode.ticketing.event.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Evento que se vende en la plataforma (concierto, partido, obra...).
+ * <p>
+ * Sesión 2: entidad JPA. El {@code venueId} de la Sesión 1 pasa a ser una relación
+ * {@code @ManyToOne} con {@link Venue}, y las zonas una relación {@code @OneToMany}.
+ */
 @Entity
 @Table(name = "events")
 public class Event {
@@ -128,5 +147,4 @@ public class Event {
     public List<TicketCategory> getTicketCategories() {
         return ticketCategories;
     }
-
 }

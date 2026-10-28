@@ -1,6 +1,5 @@
 package pe.zuncode.ticketing.event.service;
 
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.zuncode.ticketing.event.dto.VenueRequest;
@@ -11,8 +10,14 @@ import pe.zuncode.ticketing.event.repository.VenueRepository;
 
 import java.util.List;
 
+/**
+ * Lógica de negocio de recintos.
+ * <p>
+ * Sesión 2: las validaciones de formato pasaron a Bean Validation ({@link VenueRequest});
+ * el servicio recibe y devuelve DTOs.
+ */
 @Service
-@Transactional(readOnly = true) // por defecto todas las operaciones son de solo lectura
+@Transactional(readOnly = true) // por defecto, todos los métodos solo leen
 public class VenueService {
 
     private final VenueRepository venueRepository;
@@ -39,5 +44,4 @@ public class VenueService {
         return venueRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Recinto", id));
     }
-
 }

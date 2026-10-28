@@ -42,6 +42,27 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "Regla de negocio incumplida", ex.getMessage());
     }
 
+    // Sesión 3: la solicitud apunta a un evento o zona que event-service no conoce
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Solicitud inválida", ex.getMessage());
+    }
+
+    // Sesión 3: payment-service respondió, pero rechazó el cobro
+    @ExceptionHandler(PaymentRejectedException.class)
+    public ProblemDetail handlePaymentRejected(PaymentRejectedException ex) {
+        return problem(HttpStatus.PAYMENT_REQUIRED, "Pago rechazado", ex.getMessage());
+    }
+
+    // Sesión 3: otro microservicio falló, tardó demasiado o tiene el circuito abierto.
+    // Se registra la causa técnica en el log, pero al cliente solo le llega un mensaje claro.
+    @ExceptionHandler(RemoteServiceUnavailableException.class)
+    public ProblemDetail handleRemoteServiceUnavailable(RemoteServiceUnavailableException ex) {
+        ProblemDetail problem = problem(HttpStatus.SERVICE_UNAVAILABLE, "Servicio no disponible", ex.getMessage());
+        problem.setProperty("service", ex.getService());
+        return problem;
+    }
+
     // Dos transacciones modificaron la misma reserva a la vez: la segunda pierde (bloqueo optimista)
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {

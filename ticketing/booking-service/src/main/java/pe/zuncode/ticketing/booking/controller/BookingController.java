@@ -15,6 +15,7 @@ import pe.zuncode.ticketing.booking.dto.BookingRequest;
 import pe.zuncode.ticketing.booking.dto.BookingResponse;
 import pe.zuncode.ticketing.booking.dto.TicketResponse;
 import pe.zuncode.ticketing.booking.model.BookingStatus;
+import pe.zuncode.ticketing.booking.service.BookingPaymentService;
 import pe.zuncode.ticketing.booking.service.BookingService;
 
 import java.net.URI;
@@ -25,9 +26,11 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final BookingPaymentService bookingPaymentService;
 
-    public BookingController(BookingService bookingService) {
+    public BookingController(BookingService bookingService, BookingPaymentService bookingPaymentService) {
         this.bookingService = bookingService;
+        this.bookingPaymentService = bookingPaymentService;
     }
 
     // GET /api/v1/bookings?customerEmail=ana@mail.com&status=CONFIRMED  (filtros opcionales)
@@ -57,9 +60,10 @@ public class BookingController {
         return ResponseEntity.created(location).body(created);
     }
 
-    @PatchMapping("/{id}/confirm")
-    public BookingResponse confirm(@PathVariable Long id) {
-        return bookingService.confirm(id);
+    // Sesión 3: reemplaza a PATCH /{id}/confirm. Cobra en payment-service y, si se aprueba, confirma
+    @PostMapping("/{id}/pay")
+    public BookingResponse pay(@PathVariable Long id) {
+        return bookingPaymentService.pay(id);
     }
 
     @PatchMapping("/{id}/cancel")

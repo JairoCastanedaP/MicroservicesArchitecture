@@ -1,0 +1,90 @@
+### Peticiones de prueba para payment-service (Sesión 3)
+### Ejecutables desde IntelliJ IDEA (HTTP Client) o VS Code (extensión REST Client)
+### Pagos simulados. La carpeta SIMULACIÓN cambia en caliente cuán lento o inestable es el servicio.
+
+@host = http://localhost:8083/api/v1
+# Cambia estos valores por los ids que devuelven las peticiones "Crear ..."
+@paymentId = 1
+
+### ---------- PAGOS ----------
+
+### Crear pago -> 201 APPROVED
+POST {{host}}/payments
+Content-Type: application/json
+
+{
+  "bookingId": 100,
+  "customerEmail": "ana@mail.com",
+  "amount": 900.0
+}
+
+### Crear pago que supera el límite (2000) -> 201 REJECTED
+POST {{host}}/payments
+Content-Type: application/json
+
+{
+  "bookingId": 101,
+  "customerEmail": "ana@mail.com",
+  "amount": 4500.0
+}
+
+### Crear pago inválido -> 400 con lista de errores
+POST {{host}}/payments
+Content-Type: application/json
+
+{
+  "bookingId": 0,
+  "customerEmail": "x",
+  "amount": -5
+}
+
+### Obtener pago por id -> 200
+GET {{host}}/payments/{{paymentId}}
+
+### Pagos de una reserva -> 200
+GET {{host}}/payments?bookingId=100
+
+### Pago inexistente -> 404
+GET {{host}}/payments/999999
+
+### ---------- SIMULACIÓN ----------
+
+### Ver la simulación actual -> 200
+GET {{host}}/simulation
+
+### Fallar siempre (failureRate 1.0) -> 200
+PUT {{host}}/simulation
+Content-Type: application/json
+
+{
+  "failureRate": 1.0,
+  "delay": "PT0S"
+}
+
+### Crear pago con la simulación activa -> 503
+POST {{host}}/payments
+Content-Type: application/json
+
+{
+  "bookingId": 102,
+  "customerEmail": "ana@mail.com",
+  "amount": 100.0
+}
+
+### Responder lento (5 s por pago) -> 200
+PUT {{host}}/simulation
+Content-Type: application/json
+
+{
+  "failureRate": 0.0,
+  "delay": "PT5S"
+}
+
+### Volver a la normalidad -> 200
+PUT {{host}}/simulation
+Content-Type: application/json
+
+{
+  "failureRate": 0.0,
+  "delay": "PT0S"
+}

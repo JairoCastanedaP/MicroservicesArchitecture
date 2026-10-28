@@ -1,0 +1,98 @@
+### Peticiones de prueba para booking-service (Sesión 3)
+### Ejecutables desde IntelliJ IDEA (HTTP Client) o VS Code (extensión REST Client)
+### Requiere event-service (8081) y payment-service (8083) en marcha. Ejecuta las peticiones en orden; Postman guarda automáticamente los ids de las reservas creadas.
+
+@host = http://localhost:8082/api/v1
+@actuator = http://localhost:8082/actuator
+# Cambia estos valores por los ids que devuelven las peticiones "Crear ..."
+@bookingId = 1
+@bigBookingId = 2
+
+### ---------- RESERVAS ----------
+
+### Crear reserva -> 201 (el precio lo da event-service)
+POST {{host}}/bookings
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "ticketCategoryId": 1,
+  "customerEmail": "ana@mail.com",
+  "quantity": 2
+}
+
+### Crear reserva inválida -> 400 con lista de errores
+POST {{host}}/bookings
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "ticketCategoryId": 1,
+  "customerEmail": "no-es-un-correo",
+  "quantity": 15
+}
+
+### Zona que no pertenece al evento -> 400 (event-service respondió 404)
+POST {{host}}/bookings
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "ticketCategoryId": 4,
+  "customerEmail": "ana@mail.com",
+  "quantity": 1
+}
+
+### Obtener reserva por id -> 200
+GET {{host}}/bookings/{{bookingId}}
+
+### Listar reservas de un cliente -> 200
+GET {{host}}/bookings?customerEmail=ana@mail.com
+
+### Reserva inexistente -> 404
+GET {{host}}/bookings/999999
+
+### ---------- PAGOS ----------
+
+### Pagar reserva -> 200 (payment-service aprueba y se emiten los tickets)
+POST {{host}}/bookings/{{bookingId}}/pay
+
+### Tickets emitidos -> 200
+GET {{host}}/bookings/{{bookingId}}/tickets
+
+### Pagar otra vez -> 409
+POST {{host}}/bookings/{{bookingId}}/pay
+
+### Cancelar una reserva confirmada -> 409
+PATCH {{host}}/bookings/{{bookingId}}/cancel
+
+### Crear reserva de 10 entradas VIP (S/ 4500) -> 201
+POST {{host}}/bookings
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "ticketCategoryId": 1,
+  "customerEmail": "luis@mail.com",
+  "quantity": 10
+}
+
+### Pagar la reserva de S/ 4500 -> 402 (supera el límite de la tarjeta)
+POST {{host}}/bookings/{{bigBookingId}}/pay
+
+### La reserva rechazada sigue PENDING -> 200
+GET {{host}}/bookings/{{bigBookingId}}
+
+### ---------- RESILIENCIA (Actuator) ----------
+
+### Estado de los Circuit Breakers -> 200
+GET {{actuator}}/circuitbreakers
+
+### Eventos del Circuit Breaker de payment-service -> 200
+GET {{actuator}}/circuitbreakerevents/payment-service
+
+### Eventos de Retry de event-service -> 200
+GET {{actuator}}/retryevents/event-service
+
+### Health (incluye el estado de los circuitos) -> 200
+GET {{actuator}}/health

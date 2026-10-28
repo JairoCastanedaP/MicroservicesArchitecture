@@ -1,24 +1,37 @@
 package pe.zuncode.ticketing.event.service;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import pe.zuncode.ticketing.event.dto.EventRequest;
 import pe.zuncode.ticketing.event.dto.EventResponse;
+import pe.zuncode.ticketing.event.dto.TicketAvailabilityResponse;
 import pe.zuncode.ticketing.event.dto.TicketCategoryResponse;
 import pe.zuncode.ticketing.event.exception.BusinessRuleException;
 import pe.zuncode.ticketing.event.exception.InvalidRequestException;
 import pe.zuncode.ticketing.event.exception.ResourceNotFoundException;
-import pe.zuncode.ticketing.event.model.*;
+import pe.zuncode.ticketing.event.model.Event;
+import pe.zuncode.ticketing.event.model.EventCategory;
+import pe.zuncode.ticketing.event.model.EventStatus;
+import pe.zuncode.ticketing.event.model.TicketCategory;
+import pe.zuncode.ticketing.event.model.Venue;
 import pe.zuncode.ticketing.event.repository.EventRepository;
 import pe.zuncode.ticketing.event.repository.VenueRepository;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Lógica de negocio de eventos.
+ * <p>
+ * Sesión 2: las reglas de formato (obligatorios, fecha futura, precios positivos) las valida
+ * Bean Validation en {@link EventRequest}. Aquí quedan solo las reglas que necesitan datos:
+ * <ul>
+ *   <li>El recinto debe existir.</li>
+ *   <li>La suma de entradas de las zonas no puede superar el aforo del recinto.</li>
+ *   <li>Un evento solo se publica si tiene al menos una zona.</li>
+ *   <li>Un evento cancelado no se puede modificar ni publicar.</li>
+ * </ul>
+ */
 @Service
 @Transactional(readOnly = true)
 public class EventService {
@@ -46,6 +59,19 @@ public class EventService {
         return getEventWithDetails(eventId).getTicketCategories().stream()
                 .map(TicketCategoryResponse::from)
                 .toList();
+    }
+
+    /**
+     * Sesión 3: disponibilidad y precio de una zona. Lo consulta booking-service antes de reservar.
+     * La zona debe pertenecer al evento: si no, para quien llama es como si no existiera (404).
+     */
+    public TicketAvailabilityResponse findAvailability(Long eventId, Long ticketCategoryId) {
+        Event event = getEventWithDetails(eventId);
+        TicketCategory category = event.getTicketCategories().stream()
+                .filter(c -> c.getId().equals(ticketCategoryId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de entrada", ticketCategoryId));
+        return TicketAvailabilityResponse.from(event, category, LocalDateTime.now());
     }
 
     @Transactional
@@ -94,8 +120,7 @@ public class EventService {
             throw new BusinessRuleException(
                     "El evento debe tener al menos una zona (ticketCategory) para publicarse");
         }
-        event.setStatus(EventStatus.PUBLISHED);
-        // dirty checking: UPDATE automático al hacer commit
+        event.setStatus(EventStatus.PUBLISHED); // dirty checking: UPDATE automático al hacer commit
         return EventResponse.from(event);
     }
 
@@ -130,5 +155,4 @@ public class EventService {
                 .map(category -> new TicketCategory(category.name(), category.price(), category.capacity()))
                 .toList();
     }
-
 }

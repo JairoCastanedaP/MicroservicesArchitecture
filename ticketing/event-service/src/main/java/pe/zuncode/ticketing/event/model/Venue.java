@@ -1,7 +1,18 @@
 package pe.zuncode.ticketing.event.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
+/**
+ * Recinto donde se realizan los eventos (estadio, teatro, arena...).
+ * <p>
+ * Sesión 2: entidad JPA mapeada a la tabla {@code venues}.
+ * Ya no se expone en la API: los controladores trabajan con DTOs.
+ */
 @Entity
 @Table(name = "venues")
 public class Venue {
@@ -22,6 +33,7 @@ public class Venue {
     @Column(nullable = false)
     private int capacity;
 
+    // JPA necesita un constructor sin argumentos; protected para que nadie más lo use
     protected Venue() {
     }
 
@@ -32,13 +44,8 @@ public class Venue {
         this.capacity = capacity;
     }
 
-
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getName() {

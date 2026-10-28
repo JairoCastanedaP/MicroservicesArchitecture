@@ -1,13 +1,28 @@
 package pe.zuncode.ticketing.event.model;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 
+/**
+ * Zona o tipo de entrada de un evento (VIP, Platea, General...).
+ * Define el precio y cuántas entradas existen en esa zona.
+ * <p>
+ * Sesión 2: entidad JPA. Es el lado "dueño" de la relación con {@link Event}
+ * porque su tabla tiene la columna {@code event_id}.
+ */
 @Entity
 @Table(name = "ticket_categories")
 public class TicketCategory {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -58,5 +73,4 @@ public class TicketCategory {
     void setEvent(Event event) {
         this.event = event;
     }
-
 }

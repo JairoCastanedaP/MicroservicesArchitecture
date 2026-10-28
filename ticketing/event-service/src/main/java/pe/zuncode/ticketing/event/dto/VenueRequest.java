@@ -5,6 +5,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Datos que el cliente envía para crear un recinto.
+ * No tiene {@code id}: el cliente ya no puede "inventarlo".
+ */
 public record VenueRequest(
         @NotBlank(message = "es obligatorio")
         @Size(max = 120, message = "debe tener como máximo {max} caracteres")
@@ -20,6 +24,5 @@ public record VenueRequest(
         @NotNull(message = "es obligatorio")
         @Positive(message = "debe ser mayor a 0")
         Integer capacity
-
 ) {
 }

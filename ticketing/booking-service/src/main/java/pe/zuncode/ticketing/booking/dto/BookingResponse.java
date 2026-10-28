@@ -18,6 +18,7 @@ public record BookingResponse(
         LocalDateTime createdAt,
         LocalDateTime expiresAt,
         LocalDateTime confirmedAt,
+        Long paymentId,
         Long version
 ) {
 
@@ -34,6 +35,7 @@ public record BookingResponse(
                 booking.getCreatedAt(),
                 booking.getExpiresAt(),
                 booking.getConfirmedAt(),
+                booking.getPaymentId(),
                 booking.getVersion());
     }
 }

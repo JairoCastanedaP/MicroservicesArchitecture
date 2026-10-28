@@ -11,7 +11,11 @@ import pe.zuncode.ticketing.event.model.EventStatus;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Acceso a datos de eventos con Spring Data JPA.
+ */
 public interface EventRepository extends JpaRepository<Event, Long> {
+
     /**
      * Búsqueda con filtros opcionales (un filtro en null no se aplica).
      * <p>
@@ -41,5 +45,4 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     /** Query derivada del nombre del método: Spring Data genera el SQL. */
     boolean existsByVenueId(Long venueId);
-
 }

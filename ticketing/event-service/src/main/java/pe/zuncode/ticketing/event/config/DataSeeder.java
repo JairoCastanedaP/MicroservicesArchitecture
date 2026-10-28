@@ -1,16 +1,16 @@
 package pe.zuncode.ticketing.event.config;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import pe.zuncode.ticketing.event.dto.*;
-import pe.zuncode.ticketing.event.model.Event;
+import pe.zuncode.ticketing.event.dto.EventRequest;
+import pe.zuncode.ticketing.event.dto.EventResponse;
+import pe.zuncode.ticketing.event.dto.TicketCategoryRequest;
+import pe.zuncode.ticketing.event.dto.VenueRequest;
+import pe.zuncode.ticketing.event.dto.VenueResponse;
 import pe.zuncode.ticketing.event.model.EventCategory;
-import pe.zuncode.ticketing.event.model.TicketCategory;
-import pe.zuncode.ticketing.event.model.Venue;
 import pe.zuncode.ticketing.event.repository.VenueRepository;
 import pe.zuncode.ticketing.event.service.EventService;
 import pe.zuncode.ticketing.event.service.VenueService;
@@ -21,7 +21,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-
+/**
+ * Carga datos de ejemplo al iniciar la aplicación.
+ * Se desactiva con la propiedad {@code ticketing.seed-data.enabled=false}.
+ * <p>
+ * Sesión 2: los datos ahora persisten entre reinicios, así que solo se cargan
+ * si la base de datos está vacía.
+ */
 @Component
 @ConditionalOnProperty(name = "ticketing.seed-data.enabled", havingValue = "true")
 public class DataSeeder implements CommandLineRunner {
@@ -79,6 +85,4 @@ public class DataSeeder implements CommandLineRunner {
     private static LocalDateTime inDays(int days, int hour, int minute) {
         return LocalDate.now().plusDays(days).atTime(LocalTime.of(hour, minute));
     }
-
-
 }

@@ -18,6 +18,10 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Sesión 3: Spring Cloud 2025.1.x es el release train compatible con Spring Boot 4 -->
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
+        <resilience4j.version>2.4.0</resilience4j.version>
+        <wiremock.version>3.13.2</wiremock.version>
     </properties>
 
     <dependencies>
@@ -37,6 +41,35 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
+
+        <!-- Sesión 3: comunicación síncrona y resiliencia -->
+        <dependency>
+            <!-- Cliente HTTP declarativo de Spring Cloud (booking → event-service) -->
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <!-- RestClient + clientes @HttpExchange (booking → payment-service) -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
+        </dependency>
+        <dependency>
+            <!-- @Retry y @CircuitBreaker -->
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot4</artifactId>
+            <version>${resilience4j.version}</version>
+        </dependency>
+        <dependency>
+            <!-- Las anotaciones de Resilience4j funcionan con AOP (proxies) -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aspectj</artifactId>
+        </dependency>
+        <dependency>
+            <!-- /actuator/health, /actuator/circuitbreakers y /actuator/retryevents -->
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -59,7 +92,35 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <!-- Servidor HTTP falso para simular event-service y payment-service en los tests -->
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Primero el BOM de Resilience4j: así todos sus módulos quedan en la misma versión
+                 (el BOM de Spring Cloud trae una versión anterior) -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bom</artifactId>
+                <version>${resilience4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>

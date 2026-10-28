@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: payment-service
+
+  # Database per Service: payment-service tiene SU propia base de datos H2
+  # (archivo ./data/payment_db.mv.db).
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/payment_db;AUTO_SERVER=TRUE}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+
+  # Consola web de H2 en http://localhost:8083/h2-console (solo para desarrollo)
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  web:
+    error:
+      include-message: always
+      include-stacktrace: never
+
+server:
+  port: ${SERVER_PORT:8083}
+
+logging:
+  level:
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:info}
+
+# Propiedades propias del servicio (se leen con PaymentProperties)
+ticketing:
+  payment:
+    # Un pago mayor a este monto se rechaza (status REJECTED)
+    max-amount: ${PAYMENT_MAX_AMOUNT:2000.00}
+    # Valores iniciales de la simulación de fallas (se cambian en caliente con PUT /api/v1/simulation)
+    simulation:
+      failure-rate: ${PAYMENT_FAILURE_RATE:0.0}   # 0.0 = nunca falla, 0.5 = falla la mitad, 1.0 = siempre
+      delay: ${PAYMENT_DELAY:0ms}                 # demora de cada pago: 0ms, 500ms, 3s...

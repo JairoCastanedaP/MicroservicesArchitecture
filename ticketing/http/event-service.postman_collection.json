@@ -1,0 +1,527 @@
+{
+  "info": {
+    "name": "Ticketing - event-service (Sesión 3)",
+    "description": "Peticiones de prueba para event-service. Ejecuta las peticiones en orden sobre una base de datos recién creada (con los datos semilla). Cada petición incluye pruebas del código HTTP esperado (pestaña Scripts > Post-response).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "host",
+      "value": "http://localhost:8081/api/v1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Recintos",
+      "item": [
+        {
+          "name": "Listar recintos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/venues"
+          }
+        },
+        {
+          "name": "Obtener recinto por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().id).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/venues/1"
+          }
+        },
+        {
+          "name": "Crear recinto -> 201 + Location",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.headers.has('Location')).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/venues",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Teatro Peruano Japonés\",\n  \"city\": \"Lima\",\n  \"address\": \"Av. Gregorio Escobedo 803, Jesús María\",\n  \"capacity\": 1200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear recinto inválido -> 400 con lista de errores",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().errors).to.have.lengthOf(2); });",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/venues",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"city\": \"Lima\",\n  \"capacity\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Eventos",
+      "item": [
+        {
+          "name": "Listar todos los eventos (con recinto y zonas en UNA consulta)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/events"
+          }
+        },
+        {
+          "name": "Filtrar por ciudad (sin distinguir mayúsculas), categoría y estado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json()).to.have.lengthOf(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/events?city=lima&status=PUBLISHED"
+          }
+        },
+        {
+          "name": "Obtener evento por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().venue.name).to.eql('Estadio Nacional'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/events/1"
+          }
+        },
+        {
+          "name": "Evento inexistente -> 404 (ProblemDetail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().title).to.eql('Recurso no encontrado'); });",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/events/999"
+          }
+        },
+        {
+          "name": "Zonas (ticket categories) de un evento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/events/1/ticket-categories"
+          }
+        },
+        {
+          "name": "S3: Disponibilidad y precio de una zona (lo consulta booking-service)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().onSale).to.be.true; });",
+                  "pm.test('Validación 2', () => { pm.expect(pm.response.json().price).to.eql(450); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/events/1/ticket-categories/1/availability"
+          }
+        },
+        {
+          "name": "S3: Disponibilidad de una zona que no es del evento -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{host}}/events/1/ticket-categories/4/availability"
+          }
+        },
+        {
+          "name": "Crear evento -> 201 + Location (nace en DRAFT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/events",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Noche de Stand Up\",\n  \"description\": \"Comediantes nacionales\",\n  \"category\": \"COMEDY\",\n  \"venueId\": 2,\n  \"dateTime\": \"2027-03-01T21:00:00\",\n  \"ticketCategories\": [\n    {\n      \"name\": \"Preferencial\",\n      \"price\": 120.0,\n      \"capacity\": 300\n    },\n    {\n      \"name\": \"General\",\n      \"price\": 80.0,\n      \"capacity\": 700\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Bean Validation: fecha pasada y zona con precio negativo -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().errors).to.have.lengthOf(2); });",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/events",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evento del pasado\",\n  \"category\": \"MUSIC\",\n  \"venueId\": 1,\n  \"dateTime\": \"2020-01-01T20:00:00\",\n  \"ticketCategories\": [\n    {\n      \"name\": \"VIP\",\n      \"price\": -10,\n      \"capacity\": 100\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Categoría inexistente -> 400 (JSON ilegible)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/events",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Evento raro\",\n  \"category\": \"OPERA\",\n  \"venueId\": 1,\n  \"dateTime\": \"2027-01-01T20:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Recinto inexistente -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/events",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sin recinto\",\n  \"category\": \"MUSIC\",\n  \"venueId\": 999,\n  \"dateTime\": \"2027-01-01T20:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Zonas superan el aforo del recinto (800) -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{host}}/events",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sobreaforo\",\n  \"category\": \"THEATER\",\n  \"venueId\": 3,\n  \"dateTime\": \"2027-05-10T19:00:00\",\n  \"ticketCategories\": [\n    {\n      \"name\": \"Platea\",\n      \"price\": 90.0,\n      \"capacity\": 900\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Publicar evento sin zonas -> 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Formato ProblemDetail', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{host}}/events/3/publish"
+          }
+        },
+        {
+          "name": "Actualizar evento (agregar zonas al evento 3, que está en DRAFT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().totalCapacity).to.eql(800); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "url": "{{host}}/events/3",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"La Casa de Bernarda Alba\",\n  \"description\": \"Clásico de García Lorca\",\n  \"category\": \"THEATER\",\n  \"venueId\": 3,\n  \"dateTime\": \"2027-01-20T19:00:00\",\n  \"ticketCategories\": [\n    {\n      \"name\": \"Platea\",\n      \"price\": 90.0,\n      \"capacity\": 500\n    },\n    {\n      \"name\": \"Mezzanine\",\n      \"price\": 60.0,\n      \"capacity\": 300\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Publicar evento -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Validación 1', () => { pm.expect(pm.response.json().status).to.eql('PUBLISHED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{host}}/events/3/publish"
+          }
+        },
+        {
+          "name": "Eliminar evento -> 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": "{{host}}/events/2"
+          }
+        }
+      ]
+    }
+  ]
+}

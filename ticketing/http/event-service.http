@@ -1,0 +1,172 @@
+### Peticiones de prueba para event-service (Sesión 3)
+### Ejecutables desde IntelliJ IDEA (HTTP Client) o VS Code (extensión REST Client)
+### Ejecuta las peticiones en orden sobre una base de datos recién creada (con los datos semilla).
+
+@host = http://localhost:8081/api/v1
+
+### ---------- RECINTOS ----------
+
+### Listar recintos -> 200
+GET {{host}}/venues
+
+### Obtener recinto por id -> 200
+GET {{host}}/venues/1
+
+### Crear recinto -> 201 + Location
+POST {{host}}/venues
+Content-Type: application/json
+
+{
+  "name": "Teatro Peruano Japonés",
+  "city": "Lima",
+  "address": "Av. Gregorio Escobedo 803, Jesús María",
+  "capacity": 1200
+}
+
+### Crear recinto inválido -> 400 con lista de errores
+POST {{host}}/venues
+Content-Type: application/json
+
+{
+  "name": "",
+  "city": "Lima",
+  "capacity": 0
+}
+
+### ---------- EVENTOS ----------
+
+### Listar todos los eventos (con recinto y zonas en UNA consulta) -> 200
+GET {{host}}/events
+
+### Filtrar por ciudad (sin distinguir mayúsculas), categoría y estado -> 200
+GET {{host}}/events?city=lima&status=PUBLISHED
+
+### Obtener evento por id -> 200
+GET {{host}}/events/1
+
+### Evento inexistente -> 404 (ProblemDetail)
+GET {{host}}/events/999
+
+### Zonas (ticket categories) de un evento -> 200
+GET {{host}}/events/1/ticket-categories
+
+### S3: Disponibilidad y precio de una zona (lo consulta booking-service) -> 200
+GET {{host}}/events/1/ticket-categories/1/availability
+
+### S3: Disponibilidad de una zona que no es del evento -> 404
+GET {{host}}/events/1/ticket-categories/4/availability
+
+### Crear evento -> 201 + Location (nace en DRAFT)
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "name": "Noche de Stand Up",
+  "description": "Comediantes nacionales",
+  "category": "COMEDY",
+  "venueId": 2,
+  "dateTime": "2027-03-01T21:00:00",
+  "ticketCategories": [
+    {
+      "name": "Preferencial",
+      "price": 120.0,
+      "capacity": 300
+    },
+    {
+      "name": "General",
+      "price": 80.0,
+      "capacity": 700
+    }
+  ]
+}
+
+### Bean Validation: fecha pasada y zona con precio negativo -> 400
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "name": "Evento del pasado",
+  "category": "MUSIC",
+  "venueId": 1,
+  "dateTime": "2020-01-01T20:00:00",
+  "ticketCategories": [
+    {
+      "name": "VIP",
+      "price": -10,
+      "capacity": 100
+    }
+  ]
+}
+
+### Categoría inexistente -> 400 (JSON ilegible)
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "name": "Evento raro",
+  "category": "OPERA",
+  "venueId": 1,
+  "dateTime": "2027-01-01T20:00:00"
+}
+
+### Recinto inexistente -> 400
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "name": "Sin recinto",
+  "category": "MUSIC",
+  "venueId": 999,
+  "dateTime": "2027-01-01T20:00:00"
+}
+
+### Zonas superan el aforo del recinto (800) -> 400
+POST {{host}}/events
+Content-Type: application/json
+
+{
+  "name": "Sobreaforo",
+  "category": "THEATER",
+  "venueId": 3,
+  "dateTime": "2027-05-10T19:00:00",
+  "ticketCategories": [
+    {
+      "name": "Platea",
+      "price": 90.0,
+      "capacity": 900
+    }
+  ]
+}
+
+### Publicar evento sin zonas -> 409
+PATCH {{host}}/events/3/publish
+
+### Actualizar evento (agregar zonas al evento 3, que está en DRAFT) -> 200
+PUT {{host}}/events/3
+Content-Type: application/json
+
+{
+  "name": "La Casa de Bernarda Alba",
+  "description": "Clásico de García Lorca",
+  "category": "THEATER",
+  "venueId": 3,
+  "dateTime": "2027-01-20T19:00:00",
+  "ticketCategories": [
+    {
+      "name": "Platea",
+      "price": 90.0,
+      "capacity": 500
+    },
+    {
+      "name": "Mezzanine",
+      "price": 60.0,
+      "capacity": 300
+    }
+  ]
+}
+
+### Publicar evento -> 200
+PATCH {{host}}/events/3/publish
+
+### Eliminar evento -> 204
+DELETE {{host}}/events/2

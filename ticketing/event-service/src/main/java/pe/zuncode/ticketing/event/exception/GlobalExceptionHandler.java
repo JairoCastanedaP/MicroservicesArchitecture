@@ -3,7 +3,11 @@ package pe.zuncode.ticketing.event.exception;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,8 +19,17 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-@RestControllerAdvice //(AOP programacion orientada a aspectos)
+/**
+ * Manejo global de errores: traduce excepciones a respuestas HTTP con el formato
+ * estándar Problem Details (RFC 9457), Content-Type {@code application/problem+json}.
+ * <p>
+ * Extiende {@link ResponseEntityExceptionHandler}, que ya convierte a ProblemDetail las
+ * excepciones propias de Spring MVC (JSON mal formado, parámetro con tipo incorrecto,
+ * método no soportado...). Aquí agregamos las nuestras y personalizamos algunas.
+ */
+@RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -65,7 +78,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Datos inválidos",
                 "La solicitud tiene " + errors.size() + " error(es) de validación");
         body.setProperty("errors", errors);
-
         return handleExceptionInternal(ex, body, headers, status, request);
     }
 
@@ -84,8 +96,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setTitle(title);
         problem.setProperty("timestamp", Instant.now());
-
         return problem;
     }
-
 }

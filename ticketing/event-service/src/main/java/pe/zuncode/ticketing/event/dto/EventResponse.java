@@ -8,6 +8,12 @@ import pe.zuncode.ticketing.event.model.Venue;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Representación de un evento en la API.
+ * <p>
+ * Su forma NO tiene que ser igual a la entidad: aquí devolvemos un resumen del recinto
+ * (para que el cliente no tenga que hacer otra llamada) y el total de entradas calculado.
+ */
 public record EventResponse(
         Long id,
         String name,
@@ -18,8 +24,8 @@ public record EventResponse(
         VenueSummary venue,
         int totalCapacity,
         List<TicketCategoryResponse> ticketCategories
-
 ) {
+
     public record VenueSummary(Long id, String name, String city) {
 
         static VenueSummary from(Venue venue) {
@@ -42,5 +48,4 @@ public record EventResponse(
                 event.totalCapacity(),
                 event.getTicketCategories().stream().map(TicketCategoryResponse::from).toList());
     }
-
 }
